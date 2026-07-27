@@ -1,1 +1,4 @@
 workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof"

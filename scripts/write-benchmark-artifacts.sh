@@ -42,6 +42,9 @@
 #     are emitted here. New fields are nullable and never required
 #     by the aggregator. Build-only/setup splits and Docker rolling
 #     commit-build fields are emitted with nullable warm fields.
+#   - GitHub run context is emitted uniformly for every lane so BoringCache
+#     and Actions Cache artifacts can be compared by run id,
+#     run number, and attempt without guessing from artifact names.
 #
 set -euo pipefail
 
@@ -59,6 +62,7 @@ cache_storage_source=""
 cache_storage_note=""
 cache_storage_breakdown_json=""
 bytes_uploaded=""
+network_bytes_uploaded=""
 bytes_downloaded=""
 hit_behavior_note=""
 tool_outcomes_json=""
@@ -72,6 +76,16 @@ action_sha="${BENCHMARK_ACTION_SHA:-}"
 web_revision="${BENCHMARK_WEB_REVISION:-}"
 api_url="${BENCHMARK_API_URL:-${BORINGCACHE_API_URL:-https://api.boringcache.com}}"
 action_timings_json=""
+github_repository="${BENCHMARK_GITHUB_REPOSITORY:-${GITHUB_REPOSITORY:-}}"
+github_workflow="${BENCHMARK_GITHUB_WORKFLOW:-${GITHUB_WORKFLOW:-}}"
+github_job="${BENCHMARK_GITHUB_JOB:-${GITHUB_JOB:-}}"
+github_run_id="${BENCHMARK_GITHUB_RUN_ID:-${GITHUB_RUN_ID:-}}"
+github_run_number="${BENCHMARK_GITHUB_RUN_NUMBER:-${GITHUB_RUN_NUMBER:-}}"
+github_run_attempt="${BENCHMARK_GITHUB_RUN_ATTEMPT:-${GITHUB_RUN_ATTEMPT:-}}"
+github_ref="${BENCHMARK_GITHUB_REF:-${GITHUB_REF:-}}"
+github_ref_name="${BENCHMARK_GITHUB_REF_NAME:-${GITHUB_REF_NAME:-}}"
+github_sha="${BENCHMARK_GITHUB_SHA:-${GITHUB_SHA:-}}"
+github_server_url="${BENCHMARK_GITHUB_SERVER_URL:-${GITHUB_SERVER_URL:-https://github.com}}"
 workspace="${BENCHMARK_WORKSPACE:-${BORINGCACHE_WORKSPACE:-}}"
 cache_tag="${BENCHMARK_CACHE_TAG:-${CACHE_SCOPE:-}}"
 run_uid="${BENCHMARK_RUN_UID:-}"
@@ -98,6 +112,56 @@ output_dir="benchmark-results"
 docker_cache_import_seconds=""
 docker_cache_export_seconds=""
 buildkit_cached_steps="${BENCHMARK_BUILDKIT_CACHED_STEPS:-}"
+cli_image="${BENCHMARK_CLI_IMAGE:-}"
+buildkit_image="${BENCHMARK_BUILDKIT_IMAGE:-${BUILDKIT_IMAGE:-}}"
+buildkit_cache_prewarm_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_SECONDS:-}"
+buildkit_cache_prepare_seconds="${BENCHMARK_BUILDKIT_CACHE_PREPARE_SECONDS:-}"
+buildkit_cache_send_seconds="${BENCHMARK_BUILDKIT_CACHE_SEND_SECONDS:-}"
+buildkit_cache_prewarm_queued="${BENCHMARK_BUILDKIT_CACHE_PREWARM_QUEUED:-}"
+buildkit_cache_prewarm_dropped="${BENCHMARK_BUILDKIT_CACHE_PREWARM_DROPPED:-}"
+buildkit_cache_prewarm_canceled="${BENCHMARK_BUILDKIT_CACHE_PREWARM_CANCELED:-}"
+buildkit_cache_prewarm_retried="${BENCHMARK_BUILDKIT_CACHE_PREWARM_RETRIED:-}"
+buildkit_cache_prewarm_deferred="${BENCHMARK_BUILDKIT_CACHE_PREWARM_DEFERRED:-}"
+buildkit_cache_prewarm_prepared="${BENCHMARK_BUILDKIT_CACHE_PREWARM_PREPARED:-}"
+buildkit_cache_prewarm_body_prepared="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_PREPARED:-}"
+buildkit_cache_prewarm_committed_bodies="${BENCHMARK_BUILDKIT_CACHE_PREWARM_COMMITTED_BODIES:-}"
+buildkit_cache_prewarm_delegated_bodies="${BENCHMARK_BUILDKIT_CACHE_PREWARM_DELEGATED_BODIES:-}"
+buildkit_cache_prewarm_owned_bodies="${BENCHMARK_BUILDKIT_CACHE_PREWARM_OWNED_BODIES:-}"
+buildkit_cache_prewarm_owned_body_bytes="${BENCHMARK_BUILDKIT_CACHE_PREWARM_OWNED_BODY_BYTES:-}"
+buildkit_cache_prewarm_owned_body_max="${BENCHMARK_BUILDKIT_CACHE_PREWARM_OWNED_BODY_MAX:-}"
+buildkit_cache_prewarm_resolved="${BENCHMARK_BUILDKIT_CACHE_PREWARM_RESOLVED:-}"
+buildkit_cache_prewarm_reused="${BENCHMARK_BUILDKIT_CACHE_PREWARM_REUSED:-}"
+buildkit_cache_prewarm_uploaded="${BENCHMARK_BUILDKIT_CACHE_PREWARM_UPLOADED:-}"
+buildkit_cache_prewarm_failed="${BENCHMARK_BUILDKIT_CACHE_PREWARM_FAILED:-}"
+buildkit_cache_prewarm_recursive="${BENCHMARK_BUILDKIT_CACHE_PREWARM_RECURSIVE:-}"
+buildkit_cache_prewarm_direct="${BENCHMARK_BUILDKIT_CACHE_PREWARM_DIRECT:-}"
+buildkit_cache_prewarm_missed="${BENCHMARK_BUILDKIT_CACHE_PREWARM_MISSED:-}"
+buildkit_cache_prewarm_body_time_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_TIME_SECONDS:-}"
+buildkit_cache_prewarm_body_max_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_MAX_SECONDS:-}"
+buildkit_cache_prewarm_resolve_time_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_RESOLVE_TIME_SECONDS:-}"
+buildkit_cache_prewarm_resolve_max_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_RESOLVE_MAX_SECONDS:-}"
+buildkit_cache_prewarm_upload_time_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_UPLOAD_TIME_SECONDS:-}"
+buildkit_cache_prewarm_upload_max_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_UPLOAD_MAX_SECONDS:-}"
+buildkit_cache_prewarm_queue_depth="${BENCHMARK_BUILDKIT_CACHE_PREWARM_QUEUE_DEPTH:-}"
+buildkit_cache_prewarm_max_queue_depth="${BENCHMARK_BUILDKIT_CACHE_PREWARM_MAX_QUEUE_DEPTH:-}"
+buildkit_cache_prewarm_body_slot_limit="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_SLOT_LIMIT:-}"
+buildkit_cache_prewarm_body_slot_max="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_SLOT_MAX:-}"
+buildkit_cache_prewarm_body_active="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_ACTIVE:-}"
+buildkit_cache_prewarm_body_active_max="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_ACTIVE_MAX:-}"
+buildkit_cache_prewarm_body_scaleups="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_SCALEUPS:-}"
+buildkit_cache_prewarm_body_downshifts="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_DOWNSHIFTS:-}"
+buildkit_cache_prewarm_body_backlog_reliefs="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_BACKLOG_RELIEFS:-}"
+buildkit_cache_prewarm_cpu_pressure_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_CPU_PRESSURE_SECONDS:-}"
+buildkit_cache_prewarm_io_pressure_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_IO_PRESSURE_SECONDS:-}"
+buildkit_cache_prewarm_body_phase="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_PHASE:-}"
+buildkit_cache_prewarm_image_output_overlap_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_IMAGE_OUTPUT_OVERLAP_SECONDS:-}"
+buildkit_cache_prewarm_cache_only_transitions="${BENCHMARK_BUILDKIT_CACHE_PREWARM_CACHE_ONLY_TRANSITIONS:-}"
+buildkit_cache_prewarm_slot_limit_min="${BENCHMARK_BUILDKIT_CACHE_PREWARM_SLOT_LIMIT_MIN:-}"
+buildkit_cache_prewarm_slot_limit_max="${BENCHMARK_BUILDKIT_CACHE_PREWARM_SLOT_LIMIT_MAX:-}"
+buildkit_cache_prewarm_body_wait_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_WAIT_SECONDS:-}"
+buildkit_cache_prewarm_body_wait_max_seconds="${BENCHMARK_BUILDKIT_CACHE_PREWARM_BODY_WAIT_MAX_SECONDS:-}"
+buildkit_cache_prewarm_workers_current="${BENCHMARK_BUILDKIT_CACHE_PREWARM_WORKERS_CURRENT:-}"
+buildkit_cache_prewarm_workers_max="${BENCHMARK_BUILDKIT_CACHE_PREWARM_WORKERS_MAX:-}"
 oci_hydration_policy=""
 oci_body_local_hits=""
 oci_body_remote_fetches=""
@@ -185,6 +249,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --bytes-uploaded)
       bytes_uploaded="$2"
+      shift 2
+      ;;
+    --network-bytes-uploaded)
+      network_bytes_uploaded="$2"
       shift 2
       ;;
     --bytes-downloaded)
@@ -332,6 +400,206 @@ while [[ $# -gt 0 ]]; do
       ;;
     --buildkit-cached-steps)
       buildkit_cached_steps="$2"
+      shift 2
+      ;;
+    --cli-image)
+      cli_image="$2"
+      shift 2
+      ;;
+    --buildkit-image)
+      buildkit_image="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-seconds)
+      buildkit_cache_prewarm_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prepare-seconds)
+      buildkit_cache_prepare_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-send-seconds)
+      buildkit_cache_send_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-queued)
+      buildkit_cache_prewarm_queued="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-dropped)
+      buildkit_cache_prewarm_dropped="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-canceled)
+      buildkit_cache_prewarm_canceled="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-retried)
+      buildkit_cache_prewarm_retried="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-deferred)
+      buildkit_cache_prewarm_deferred="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-prepared)
+      buildkit_cache_prewarm_prepared="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-prepared)
+      buildkit_cache_prewarm_body_prepared="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-committed-bodies)
+      buildkit_cache_prewarm_committed_bodies="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-delegated-bodies)
+      buildkit_cache_prewarm_delegated_bodies="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-owned-bodies)
+      buildkit_cache_prewarm_owned_bodies="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-owned-body-bytes)
+      buildkit_cache_prewarm_owned_body_bytes="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-owned-body-max)
+      buildkit_cache_prewarm_owned_body_max="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-resolved)
+      buildkit_cache_prewarm_resolved="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-reused)
+      buildkit_cache_prewarm_reused="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-uploaded)
+      buildkit_cache_prewarm_uploaded="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-failed)
+      buildkit_cache_prewarm_failed="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-recursive)
+      buildkit_cache_prewarm_recursive="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-direct)
+      buildkit_cache_prewarm_direct="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-missed)
+      buildkit_cache_prewarm_missed="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-time-seconds)
+      buildkit_cache_prewarm_body_time_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-max-seconds)
+      buildkit_cache_prewarm_body_max_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-resolve-time-seconds)
+      buildkit_cache_prewarm_resolve_time_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-resolve-max-seconds)
+      buildkit_cache_prewarm_resolve_max_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-upload-time-seconds)
+      buildkit_cache_prewarm_upload_time_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-upload-max-seconds)
+      buildkit_cache_prewarm_upload_max_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-queue-depth)
+      buildkit_cache_prewarm_queue_depth="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-max-queue-depth)
+      buildkit_cache_prewarm_max_queue_depth="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-slot-limit)
+      buildkit_cache_prewarm_body_slot_limit="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-slot-max)
+      buildkit_cache_prewarm_body_slot_max="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-active)
+      buildkit_cache_prewarm_body_active="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-active-max)
+      buildkit_cache_prewarm_body_active_max="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-scaleups)
+      buildkit_cache_prewarm_body_scaleups="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-downshifts)
+      buildkit_cache_prewarm_body_downshifts="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-backlog-reliefs)
+      buildkit_cache_prewarm_body_backlog_reliefs="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-cpu-pressure-seconds)
+      buildkit_cache_prewarm_cpu_pressure_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-io-pressure-seconds)
+      buildkit_cache_prewarm_io_pressure_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-phase)
+      buildkit_cache_prewarm_body_phase="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-image-output-overlap-seconds)
+      buildkit_cache_prewarm_image_output_overlap_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-cache-only-transitions)
+      buildkit_cache_prewarm_cache_only_transitions="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-slot-limit-min)
+      buildkit_cache_prewarm_slot_limit_min="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-slot-limit-max)
+      buildkit_cache_prewarm_slot_limit_max="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-wait-seconds)
+      buildkit_cache_prewarm_body_wait_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-body-wait-max-seconds)
+      buildkit_cache_prewarm_body_wait_max_seconds="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-workers-current)
+      buildkit_cache_prewarm_workers_current="$2"
+      shift 2
+      ;;
+    --buildkit-cache-prewarm-workers-max)
+      buildkit_cache_prewarm_workers_max="$2"
       shift 2
       ;;
     --http-transport)
@@ -788,18 +1056,11 @@ native_tool_payload_from_inputs() {
     return
   fi
 
-  local stats_path=""
-  local tool="${native_tool_kind:-}"
-  if [[ -n "$native_tool_stats_file" ]]; then
-    stats_path="$native_tool_stats_file"
-    tool="${tool:-${adapter:-$mode}}"
-  elif [[ -n "$sccache_stats_file" ]]; then
-    stats_path="$sccache_stats_file"
-    tool="${tool:-sccache}"
-  fi
+  local stats_path="${native_tool_stats_file:-$sccache_stats_file}"
+  local tool="${native_tool_kind:-${adapter:-$mode}}"
   if [[ -n "$stats_path" ]]; then
     case "$tool" in
-      sccache|rust-sccache|"")
+      sccache|"")
         sccache_native_tool_payload_from_stats "$stats_path"
         return
         ;;
@@ -875,7 +1136,7 @@ collect_default_product_refs() {
   fi
 
   if [[ -z "$action_ref" && "$strategy" == "boringcache" ]]; then
-    action_ref="boringcache/one@v1"
+    action_ref="boringcache/one@9721d419d2c78c0780963d297eb3f81f24641a27"
   fi
 
   if [[ -z "$action_sha" && "$action_ref" =~ ^([^@]+)@(.+)$ ]]; then
@@ -980,7 +1241,7 @@ session_summary_payload_from_inputs() {
     fi
   fi
 
-  local token="${BORINGCACHE_RESTORE_TOKEN:-${BORINGCACHE_API_TOKEN:-}}"
+  local token="${BORINGCACHE_RESTORE_TOKEN:-}"
   local run_identity="${run_uid:-${GITHUB_RUN_ID:-}}"
   local provider_run_identity="${GITHUB_RUN_ID:-}"
   local display_run_identity=""
@@ -1213,6 +1474,9 @@ launch_proof_paths_payload_from_inputs() {
 if [[ -n "$bytes_uploaded" ]] && ! [[ "$bytes_uploaded" =~ ^[0-9]+$ ]]; then
   bytes_uploaded=""
 fi
+if [[ -n "$network_bytes_uploaded" ]] && ! [[ "$network_bytes_uploaded" =~ ^[0-9]+$ ]]; then
+  network_bytes_uploaded=""
+fi
 if [[ -n "$bytes_downloaded" ]] && ! [[ "$bytes_downloaded" =~ ^[0-9]+$ ]]; then
   bytes_downloaded=""
 fi
@@ -1226,6 +1490,7 @@ cache_import_status="$(sanitize_token "$cache_import_status")"
 paired_run_id="$(sanitize_token "$paired_run_id")"
 prior_cache_state="$(sanitize_token "$prior_cache_state")"
 docker_cache_import_ready="$(sanitize_token "$docker_cache_import_ready")"
+raw_cache_import_status="$cache_import_status"
 
 if [[ -n "$docker_cache_import_seconds" ]] && ! [[ "$docker_cache_import_seconds" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   docker_cache_import_seconds=""
@@ -1233,7 +1498,77 @@ fi
 if [[ -n "$docker_cache_export_seconds" ]] && ! [[ "$docker_cache_export_seconds" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   docker_cache_export_seconds=""
 fi
+if [[ -n "$buildkit_cache_prewarm_seconds" ]] && ! [[ "$buildkit_cache_prewarm_seconds" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  buildkit_cache_prewarm_seconds=""
+fi
+if [[ -n "$buildkit_cache_prepare_seconds" ]] && ! [[ "$buildkit_cache_prepare_seconds" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  buildkit_cache_prepare_seconds=""
+fi
+if [[ -n "$buildkit_cache_send_seconds" ]] && ! [[ "$buildkit_cache_send_seconds" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  buildkit_cache_send_seconds=""
+fi
 buildkit_cached_steps="$(sanitize_uint "$buildkit_cached_steps")"
+buildkit_cache_prewarm_queued="$(sanitize_uint "$buildkit_cache_prewarm_queued")"
+buildkit_cache_prewarm_dropped="$(sanitize_uint "$buildkit_cache_prewarm_dropped")"
+buildkit_cache_prewarm_canceled="$(sanitize_uint "$buildkit_cache_prewarm_canceled")"
+buildkit_cache_prewarm_retried="$(sanitize_uint "$buildkit_cache_prewarm_retried")"
+buildkit_cache_prewarm_deferred="$(sanitize_uint "$buildkit_cache_prewarm_deferred")"
+buildkit_cache_prewarm_prepared="$(sanitize_uint "$buildkit_cache_prewarm_prepared")"
+buildkit_cache_prewarm_body_prepared="$(sanitize_uint "$buildkit_cache_prewarm_body_prepared")"
+buildkit_cache_prewarm_committed_bodies="$(sanitize_uint "$buildkit_cache_prewarm_committed_bodies")"
+buildkit_cache_prewarm_delegated_bodies="$(sanitize_uint "$buildkit_cache_prewarm_delegated_bodies")"
+buildkit_cache_prewarm_owned_bodies="$(sanitize_uint "$buildkit_cache_prewarm_owned_bodies")"
+buildkit_cache_prewarm_owned_body_bytes="$(sanitize_uint "$buildkit_cache_prewarm_owned_body_bytes")"
+buildkit_cache_prewarm_owned_body_max="$(sanitize_uint "$buildkit_cache_prewarm_owned_body_max")"
+buildkit_cache_prewarm_resolved="$(sanitize_uint "$buildkit_cache_prewarm_resolved")"
+buildkit_cache_prewarm_reused="$(sanitize_uint "$buildkit_cache_prewarm_reused")"
+buildkit_cache_prewarm_uploaded="$(sanitize_uint "$buildkit_cache_prewarm_uploaded")"
+buildkit_cache_prewarm_failed="$(sanitize_uint "$buildkit_cache_prewarm_failed")"
+buildkit_cache_prewarm_recursive="$(sanitize_uint "$buildkit_cache_prewarm_recursive")"
+buildkit_cache_prewarm_direct="$(sanitize_uint "$buildkit_cache_prewarm_direct")"
+buildkit_cache_prewarm_missed="$(sanitize_uint "$buildkit_cache_prewarm_missed")"
+buildkit_cache_prewarm_body_time_seconds="$(sanitize_number "$buildkit_cache_prewarm_body_time_seconds")"
+buildkit_cache_prewarm_body_max_seconds="$(sanitize_number "$buildkit_cache_prewarm_body_max_seconds")"
+buildkit_cache_prewarm_resolve_time_seconds="$(sanitize_number "$buildkit_cache_prewarm_resolve_time_seconds")"
+buildkit_cache_prewarm_resolve_max_seconds="$(sanitize_number "$buildkit_cache_prewarm_resolve_max_seconds")"
+buildkit_cache_prewarm_upload_time_seconds="$(sanitize_number "$buildkit_cache_prewarm_upload_time_seconds")"
+buildkit_cache_prewarm_upload_max_seconds="$(sanitize_number "$buildkit_cache_prewarm_upload_max_seconds")"
+buildkit_cache_prewarm_queue_depth="$(sanitize_uint "$buildkit_cache_prewarm_queue_depth")"
+buildkit_cache_prewarm_max_queue_depth="$(sanitize_uint "$buildkit_cache_prewarm_max_queue_depth")"
+buildkit_cache_prewarm_body_slot_limit="$(sanitize_uint "$buildkit_cache_prewarm_body_slot_limit")"
+buildkit_cache_prewarm_body_slot_max="$(sanitize_uint "$buildkit_cache_prewarm_body_slot_max")"
+buildkit_cache_prewarm_body_active="$(sanitize_uint "$buildkit_cache_prewarm_body_active")"
+buildkit_cache_prewarm_body_active_max="$(sanitize_uint "$buildkit_cache_prewarm_body_active_max")"
+buildkit_cache_prewarm_body_scaleups="$(sanitize_uint "$buildkit_cache_prewarm_body_scaleups")"
+buildkit_cache_prewarm_body_downshifts="$(sanitize_uint "$buildkit_cache_prewarm_body_downshifts")"
+buildkit_cache_prewarm_body_backlog_reliefs="$(sanitize_uint "$buildkit_cache_prewarm_body_backlog_reliefs")"
+buildkit_cache_prewarm_cpu_pressure_seconds="$(sanitize_number "$buildkit_cache_prewarm_cpu_pressure_seconds")"
+buildkit_cache_prewarm_io_pressure_seconds="$(sanitize_number "$buildkit_cache_prewarm_io_pressure_seconds")"
+buildkit_cache_prewarm_body_phase="$(sanitize_token "$buildkit_cache_prewarm_body_phase")"
+case "$buildkit_cache_prewarm_body_phase" in
+  solve|image-output|cache-only) ;;
+  *) buildkit_cache_prewarm_body_phase="" ;;
+esac
+buildkit_cache_prewarm_image_output_overlap_seconds="$(sanitize_number "$buildkit_cache_prewarm_image_output_overlap_seconds")"
+buildkit_cache_prewarm_cache_only_transitions="$(sanitize_uint "$buildkit_cache_prewarm_cache_only_transitions")"
+buildkit_cache_prewarm_slot_limit_min="$(sanitize_uint "$buildkit_cache_prewarm_slot_limit_min")"
+buildkit_cache_prewarm_slot_limit_max="$(sanitize_uint "$buildkit_cache_prewarm_slot_limit_max")"
+buildkit_cache_prewarm_body_wait_seconds="$(sanitize_number "$buildkit_cache_prewarm_body_wait_seconds")"
+buildkit_cache_prewarm_body_wait_max_seconds="$(sanitize_number "$buildkit_cache_prewarm_body_wait_max_seconds")"
+buildkit_cache_prewarm_workers_current="$(sanitize_uint "$buildkit_cache_prewarm_workers_current")"
+buildkit_cache_prewarm_workers_max="$(sanitize_uint "$buildkit_cache_prewarm_workers_max")"
+cache_reuse_status=""
+effective_cache_import_status="$cache_import_status"
+if [[ "$strategy" == "boringcache" && ( "$mode" == "docker" || "$adapter" == "oci" ) ]]; then
+  if [[ "$cache_import_status" == "ok" && "$buildkit_cached_steps" == "0" ]]; then
+    cache_reuse_status="no_reuse"
+    effective_cache_import_status="no_reuse"
+  elif [[ "$cache_import_status" == "ok" && -n "$buildkit_cached_steps" ]]; then
+    cache_reuse_status="reused"
+  elif [[ -n "$cache_import_status" ]]; then
+    cache_reuse_status="unusable_import"
+  fi
+fi
 oci_body_local_hits="$(sanitize_uint "$oci_body_local_hits")"
 oci_body_remote_fetches="$(sanitize_uint "$oci_body_remote_fetches")"
 oci_body_local_bytes="$(sanitize_uint "$oci_body_local_bytes")"
@@ -1259,6 +1594,13 @@ oci_new_blob_bytes="$(sanitize_uint "$oci_new_blob_bytes")"
 oci_upload_requested_blobs="$(sanitize_uint "$oci_upload_requested_blobs")"
 oci_upload_already_present="$(sanitize_uint "$oci_upload_already_present")"
 oci_upload_batch_seconds="$(sanitize_number "$oci_upload_batch_seconds")"
+network_bytes_uploaded_source=""
+if [[ -n "$network_bytes_uploaded" ]]; then
+  network_bytes_uploaded_source="network_bytes_uploaded_input"
+elif [[ -n "$oci_new_blob_bytes" ]]; then
+  network_bytes_uploaded="$oci_new_blob_bytes"
+  network_bytes_uploaded_source="oci_new_blob_bytes"
+fi
 reseed_new_blob_threshold="$(sanitize_uint "$reseed_new_blob_threshold")"
 reseed_new_blob_threshold="${reseed_new_blob_threshold:-0}"
 tiny_metadata_churn_max_blobs="$(sanitize_uint "$tiny_metadata_churn_max_blobs")"
@@ -1352,7 +1694,9 @@ fi
 slow_new_blob_bytes="$oci_new_blob_bytes"
 slow_prior_cache_state="$prior_cache_state"
 if [[ -z "$slow_prior_cache_state" ]]; then
-  if [[ -n "$cache_import_status" && "$cache_import_status" == "ok" ]]; then
+  if [[ "$cache_reuse_status" == "no_reuse" ]]; then
+    slow_prior_cache_state="metadata_import_no_reuse"
+  elif [[ -n "$cache_import_status" && "$cache_import_status" == "ok" ]]; then
     slow_prior_cache_state="usable_import"
   elif [[ -n "$cache_import_status" ]]; then
     slow_prior_cache_state="unusable_import"
@@ -1376,6 +1720,13 @@ slow_hypotheses_payload="$(jq -n -c \
   --argjson hit_rate "$(json_num_or_null "$slow_hit_rate")" \
   --argjson non_cacheable_calls "$(json_num_or_null "$slow_native_non_cacheable_calls")" \
   --argjson new_blob_bytes "$(json_num_or_null "$slow_new_blob_bytes")" \
+  --argjson prewarm_body_time "$(json_num_or_null "$buildkit_cache_prewarm_body_time_seconds")" \
+  --argjson prewarm_upload_time "$(json_num_or_null "$buildkit_cache_prewarm_upload_time_seconds")" \
+  --argjson prewarm_body_wait "$(json_num_or_null "$buildkit_cache_prewarm_body_wait_seconds")" \
+  --argjson prewarm_cpu_pressure "$(json_num_or_null "$buildkit_cache_prewarm_cpu_pressure_seconds")" \
+  --argjson prewarm_io_pressure "$(json_num_or_null "$buildkit_cache_prewarm_io_pressure_seconds")" \
+  --argjson prewarm_body_downshifts "$(json_num_or_null "$buildkit_cache_prewarm_body_downshifts")" \
+  --argjson prewarm_body_slot_min "$(json_num_or_null "$buildkit_cache_prewarm_slot_limit_min")" \
   --argjson issue_candidates "$issue_candidates_payload" \
   '
   def dominates($value; $build):
@@ -1419,6 +1770,58 @@ slow_hypotheses_payload="$(jq -n -c \
         "confidence": "high",
         "summary": "Cache save/export time is a likely slow-build contributor.",
         "evidence": {"cache_save_export_seconds": $cache_save_export, "build_seconds": $build}
+      }
+    else empty end,
+    if dominates($prewarm_upload_time; $build) then
+      {
+        "id": "buildkit_prewarm_upload_tail",
+        "confidence": "medium",
+        "summary": "BuildKit prewarm upload work consumed meaningful time during the measured build.",
+        "evidence": {"prewarm_upload_time_seconds": $prewarm_upload_time, "build_seconds": $build}
+      }
+    else empty end,
+    if dominates($prewarm_body_time; $build) then
+      {
+        "id": "buildkit_prewarm_body_tail",
+        "confidence": "medium",
+        "summary": "BuildKit prewarm body materialization consumed meaningful time during the measured build.",
+        "evidence": {"prewarm_body_time_seconds": $prewarm_body_time, "build_seconds": $build}
+      }
+    else empty end,
+    if ($prewarm_body_wait != null and $prewarm_body_wait >= 60) then
+      {
+        "id": "buildkit_body_backlog_wait",
+        "confidence": "medium",
+        "summary": "BuildKit body materialization waited behind the slot governor or queue.",
+        "evidence": {
+          "prewarm_body_wait_seconds": $prewarm_body_wait,
+          "body_downshifts": $prewarm_body_downshifts,
+          "slot_limit_min": $prewarm_body_slot_min
+        }
+      }
+    else empty end,
+    if ($prewarm_cpu_pressure != null and $prewarm_cpu_pressure >= 60) then
+      {
+        "id": "buildkit_cpu_pressure_observed",
+        "confidence": "low",
+        "summary": "The BuildKit backend observed sustained CPU pressure while prewarm work was active.",
+        "evidence": {
+          "cpu_pressure_seconds": $prewarm_cpu_pressure,
+          "body_downshifts": $prewarm_body_downshifts,
+          "slot_limit_min": $prewarm_body_slot_min
+        }
+      }
+    else empty end,
+    if ($prewarm_io_pressure != null and $prewarm_io_pressure >= 60) then
+      {
+        "id": "buildkit_io_pressure_observed",
+        "confidence": "medium",
+        "summary": "The BuildKit backend observed sustained I/O pressure while prewarm work was active.",
+        "evidence": {
+          "io_pressure_seconds": $prewarm_io_pressure,
+          "body_downshifts": $prewarm_body_downshifts,
+          "slot_limit_min": $prewarm_body_slot_min
+        }
       }
     else empty end,
     if dominates($post_cleanup; $build) then
@@ -1491,6 +1894,17 @@ slow_reason_payload="$(jq -n -c \
   --argjson miss_count "$(json_num_or_null "$slow_miss_count")" \
   --argjson hit_rate "$(json_num_or_null "$slow_hit_rate")" \
   --argjson new_blob_bytes "$(json_num_or_null "$slow_new_blob_bytes")" \
+  --argjson prewarm_body_time "$(json_num_or_null "$buildkit_cache_prewarm_body_time_seconds")" \
+  --argjson prewarm_upload_time "$(json_num_or_null "$buildkit_cache_prewarm_upload_time_seconds")" \
+  --argjson prewarm_body_wait "$(json_num_or_null "$buildkit_cache_prewarm_body_wait_seconds")" \
+  --argjson prewarm_cpu_pressure "$(json_num_or_null "$buildkit_cache_prewarm_cpu_pressure_seconds")" \
+  --argjson prewarm_io_pressure "$(json_num_or_null "$buildkit_cache_prewarm_io_pressure_seconds")" \
+  --arg prewarm_body_phase "$buildkit_cache_prewarm_body_phase" \
+  --argjson prewarm_image_output_overlap "$(json_num_or_null "$buildkit_cache_prewarm_image_output_overlap_seconds")" \
+  --argjson prewarm_cache_only_transitions "$(json_num_or_null "$buildkit_cache_prewarm_cache_only_transitions")" \
+  --argjson prewarm_body_downshifts "$(json_num_or_null "$buildkit_cache_prewarm_body_downshifts")" \
+  --argjson prewarm_slot_limit_min "$(json_num_or_null "$buildkit_cache_prewarm_slot_limit_min")" \
+  --argjson prewarm_slot_limit_max "$(json_num_or_null "$buildkit_cache_prewarm_slot_limit_max")" \
   --argjson native_tool "$native_tool_payload" \
   --argjson issue_candidates "$issue_candidates_payload" \
   --argjson hypotheses "$slow_hypotheses_payload" \
@@ -1512,6 +1926,19 @@ slow_reason_payload="$(jq -n -c \
     "hit_rate": $hit_rate,
     "prior_cache_state": $prior_cache_state,
     "new_blob_bytes": $new_blob_bytes,
+    "buildkit_prewarm": {
+      "body_time_seconds": $prewarm_body_time,
+      "upload_time_seconds": $prewarm_upload_time,
+      "body_wait_seconds": $prewarm_body_wait,
+      "cpu_pressure_seconds": $prewarm_cpu_pressure,
+      "io_pressure_seconds": $prewarm_io_pressure,
+      "body_phase": (if $prewarm_body_phase == "" then null else $prewarm_body_phase end),
+      "image_output_overlap_seconds": $prewarm_image_output_overlap,
+      "cache_only_transitions": $prewarm_cache_only_transitions,
+      "body_downshifts": $prewarm_body_downshifts,
+      "slot_limit_min": $prewarm_slot_limit_min,
+      "slot_limit_max": $prewarm_slot_limit_max
+    },
     "native_tool": $native_tool,
     "issue_candidates": $issue_candidates,
     "hypotheses": $hypotheses
@@ -1550,13 +1977,7 @@ if [[ "$lane" == "rolling" && "$strategy" == "boringcache" ]]; then
   fi
 fi
 
-if [[ "$save_result" == "skipped-build-failed" ]]; then
-  sample_valid=false
-  reporting_mode="invalid"
-  reporting_reason="measured_build_failed"
-  reporting_note="The measured build command failed; timings and native-tool stats are diagnostic only."
-  validity_reason="measured_build_failed"
-elif [[ "$strategy" == "boringcache" && "$lane" == "fresh" && -n "$warm1_seconds" && -n "$cache_import_status" && "$cache_import_status" != "ok" ]]; then
+if [[ "$strategy" == "boringcache" && "$lane" == "fresh" && -n "$warm1_seconds" && -n "$cache_import_status" && "$cache_import_status" != "ok" ]]; then
   warm_rerun_succeeded=false
   sample_valid=false
   reporting_mode="invalid"
@@ -1646,23 +2067,6 @@ if [[ "$single_phase_proof" == "true" ]]; then
       {
         "tool": (.tool // null),
         "schema_version": (.schema_version // null),
-        "stats_source": (.stats_source // null),
-        "compile_requests": (.compile_requests // null),
-        "compile_requests_executed": (.compile_requests_executed // null),
-        "cache_hits": (.cache_hits // .hit_count // null),
-        "cache_misses": (.cache_misses // .miss_count // null),
-        "hit_rate": (.hit_rate // null),
-        "hit_counts": (.hit_counts // null),
-        "miss_counts": (.miss_counts // null),
-        "non_cacheable_calls": (.non_cacheable_calls // null),
-        "non_cacheable_reasons": (.non_cacheable_reasons // null),
-        "average_cache_read_hit_seconds": (.average_cache_read_hit_seconds // null),
-        "average_cache_write_seconds": (.average_cache_write_seconds // null),
-        "average_compiler_seconds": (.average_compiler_seconds // null),
-        "cache_errors": (.cache_errors // null),
-        "cache_read_errors": (.cache_read_errors // null),
-        "cache_write_errors": (.cache_write_errors // null),
-        "cache_timeouts": (.cache_timeouts // null),
         "cache_tag": (.cache_tag // null),
         "command": (.command // null),
         "restore": ({
@@ -1696,12 +2100,12 @@ fi
 if [[ "$single_phase_proof" == "true" ]]; then
   runs_payload="$(jq -n -c \
     --arg lane "$lane" \
-    --arg measured_label "$first_build_label_value" \
+    --arg label "$first_build_label_value" \
     --argjson measured_seconds "$(json_num_or_null "$cold_seconds")" \
     --argjson measured_build_seconds "$(json_num_or_null "$cold_build_seconds")" \
     --argjson measured_setup_seconds "$(json_num_or_null "$cold_setup_seconds")" \
     '{
-      "measured_label": $measured_label,
+      "measured_label": $label,
       "measured_seconds": $measured_seconds,
       "measured_build_seconds": $measured_build_seconds,
       "measured_restore_or_setup_seconds": $measured_setup_seconds,
@@ -1715,7 +2119,10 @@ if [[ "$single_phase_proof" == "true" ]]; then
     --arg reporting_reason "$reporting_reason" \
     --arg reporting_note "$reporting_note" \
     --arg validity_reason "$validity_reason" \
-    --arg cache_import_status "$cache_import_status" \
+    --arg cache_import_status "$effective_cache_import_status" \
+    --arg raw_cache_import_status "$raw_cache_import_status" \
+    --arg prior_cache_state "$slow_prior_cache_state" \
+    --arg cache_reuse_status "$cache_reuse_status" \
     --arg rolling_update_kind "$rolling_reseed_kind" \
     --arg rolling_update_reason "$reseed_reason" \
     --argjson sample_valid "$sample_valid" \
@@ -1730,7 +2137,10 @@ if [[ "$single_phase_proof" == "true" ]]; then
       "reporting_reason": ($reporting_reason | blank_to_null),
       "reporting_note": ($reporting_note | blank_to_null),
       "validity_reason": ($validity_reason | blank_to_null),
-      "cache_import_status": ($cache_import_status | blank_to_null)
+      "cache_import_status": ($cache_import_status | blank_to_null),
+      "raw_cache_import_status": ($raw_cache_import_status | blank_to_null),
+      "prior_cache_state": ($prior_cache_state | blank_to_null),
+      "cache_reuse_status": ($cache_reuse_status | blank_to_null)
     }
     + (
       if $lane == "rolling" then
@@ -1785,7 +2195,10 @@ else
     --arg reporting_reason "$reporting_reason" \
     --arg reporting_note "$reporting_note" \
     --arg validity_reason "$validity_reason" \
-    --arg cache_import_status "$cache_import_status" \
+    --arg cache_import_status "$effective_cache_import_status" \
+    --arg raw_cache_import_status "$raw_cache_import_status" \
+    --arg prior_cache_state "$slow_prior_cache_state" \
+    --arg cache_reuse_status "$cache_reuse_status" \
     --arg rolling_reseed_kind "$rolling_reseed_kind" \
     --arg reseed_reason "$reseed_reason" \
     --argjson sample_valid "$sample_valid" \
@@ -1803,6 +2216,9 @@ else
       "reporting_note": ($reporting_note | blank_to_null),
       "validity_reason": ($validity_reason | blank_to_null),
       "cache_import_status": ($cache_import_status | blank_to_null),
+      "raw_cache_import_status": ($raw_cache_import_status | blank_to_null),
+      "prior_cache_state": ($prior_cache_state | blank_to_null),
+      "cache_reuse_status": ($cache_reuse_status | blank_to_null),
       "rolling_reseed": $rolling_reseed,
       "steady_state_candidate": $steady_state_candidate,
       "rolling_reseed_kind": ($rolling_reseed_kind | blank_to_null),
@@ -1819,6 +2235,11 @@ else
       "warm_rerun_succeeded": $warm_rerun_succeeded,
       "note": (if $note == "" then null else $note end)
     }')"
+fi
+
+github_run_url=""
+if [[ -n "$github_server_url" && -n "$github_repository" && -n "$github_run_id" ]]; then
+  github_run_url="${github_server_url%/}/${github_repository}/actions/runs/${github_run_id}"
 fi
 
 cat > "$json_path" <<JSON
@@ -1839,6 +2260,18 @@ cat > "$json_path" <<JSON
     "action_sha": $(json_string_or_null "$action_sha"),
     "web_revision": $(json_string_or_null "$web_revision"),
     "api_url": $(json_string_or_null "$api_url")
+  },
+  "run_context": {
+    "github_repository": $(json_string_or_null "$github_repository"),
+    "github_workflow": $(json_string_or_null "$github_workflow"),
+    "github_job": $(json_string_or_null "$github_job"),
+    "github_run_id": $(json_num_or_null "$github_run_id"),
+    "github_run_number": $(json_num_or_null "$github_run_number"),
+    "github_run_attempt": $(json_num_or_null "$github_run_attempt"),
+    "github_run_url": $(json_string_or_null "$github_run_url"),
+    "github_ref": $(json_string_or_null "$github_ref"),
+    "github_ref_name": $(json_string_or_null "$github_ref_name"),
+    "github_sha": $(json_string_or_null "$github_sha")
   },
   "workspace": $(json_string_or_null "$workspace"),
   "cache_tag": $(json_string_or_null "$cache_tag"),
@@ -1870,9 +2303,61 @@ cat > "$json_path" <<JSON
     "storage_breakdown": $storage_breakdown_payload
   },
   "docker_cache": {
+    "cli_image": $(json_string_or_null "$cli_image"),
+    "buildkit_image": $(json_string_or_null "$buildkit_image"),
     "import_seconds": $(json_num_or_null "$docker_cache_import_seconds"),
     "export_seconds": $(json_num_or_null "$docker_cache_export_seconds"),
-    "cached_steps": $(json_num_or_null "$buildkit_cached_steps")
+    "cached_steps": $(json_num_or_null "$buildkit_cached_steps"),
+    "prewarm_seconds": $(json_num_or_null "$buildkit_cache_prewarm_seconds"),
+    "prepare_seconds": $(json_num_or_null "$buildkit_cache_prepare_seconds"),
+    "send_seconds": $(json_num_or_null "$buildkit_cache_send_seconds"),
+    "prewarm": {
+      "queued": $(json_num_or_null "$buildkit_cache_prewarm_queued"),
+      "dropped": $(json_num_or_null "$buildkit_cache_prewarm_dropped"),
+      "canceled": $(json_num_or_null "$buildkit_cache_prewarm_canceled"),
+      "retried": $(json_num_or_null "$buildkit_cache_prewarm_retried"),
+      "deferred": $(json_num_or_null "$buildkit_cache_prewarm_deferred"),
+      "prepared": $(json_num_or_null "$buildkit_cache_prewarm_prepared"),
+      "body_prepared": $(json_num_or_null "$buildkit_cache_prewarm_body_prepared"),
+      "committed_bodies": $(json_num_or_null "$buildkit_cache_prewarm_committed_bodies"),
+      "delegated_bodies": $(json_num_or_null "$buildkit_cache_prewarm_delegated_bodies"),
+      "owned_bodies": $(json_num_or_null "$buildkit_cache_prewarm_owned_bodies"),
+      "owned_body_bytes": $(json_num_or_null "$buildkit_cache_prewarm_owned_body_bytes"),
+      "owned_body_max": $(json_num_or_null "$buildkit_cache_prewarm_owned_body_max"),
+      "resolved": $(json_num_or_null "$buildkit_cache_prewarm_resolved"),
+      "reused": $(json_num_or_null "$buildkit_cache_prewarm_reused"),
+      "uploaded": $(json_num_or_null "$buildkit_cache_prewarm_uploaded"),
+      "failed": $(json_num_or_null "$buildkit_cache_prewarm_failed"),
+      "recursive": $(json_num_or_null "$buildkit_cache_prewarm_recursive"),
+      "direct": $(json_num_or_null "$buildkit_cache_prewarm_direct"),
+      "missed": $(json_num_or_null "$buildkit_cache_prewarm_missed"),
+      "body_time_seconds": $(json_num_or_null "$buildkit_cache_prewarm_body_time_seconds"),
+      "body_max_seconds": $(json_num_or_null "$buildkit_cache_prewarm_body_max_seconds"),
+      "resolve_time_seconds": $(json_num_or_null "$buildkit_cache_prewarm_resolve_time_seconds"),
+      "resolve_max_seconds": $(json_num_or_null "$buildkit_cache_prewarm_resolve_max_seconds"),
+      "upload_time_seconds": $(json_num_or_null "$buildkit_cache_prewarm_upload_time_seconds"),
+      "upload_max_seconds": $(json_num_or_null "$buildkit_cache_prewarm_upload_max_seconds"),
+      "queue_depth": $(json_num_or_null "$buildkit_cache_prewarm_queue_depth"),
+      "max_queue_depth": $(json_num_or_null "$buildkit_cache_prewarm_max_queue_depth"),
+      "body_slot_limit": $(json_num_or_null "$buildkit_cache_prewarm_body_slot_limit"),
+      "body_slot_max": $(json_num_or_null "$buildkit_cache_prewarm_body_slot_max"),
+      "body_active": $(json_num_or_null "$buildkit_cache_prewarm_body_active"),
+      "body_active_max": $(json_num_or_null "$buildkit_cache_prewarm_body_active_max"),
+      "body_scaleups": $(json_num_or_null "$buildkit_cache_prewarm_body_scaleups"),
+      "body_downshifts": $(json_num_or_null "$buildkit_cache_prewarm_body_downshifts"),
+      "body_backlog_reliefs": $(json_num_or_null "$buildkit_cache_prewarm_body_backlog_reliefs"),
+      "cpu_pressure_seconds": $(json_num_or_null "$buildkit_cache_prewarm_cpu_pressure_seconds"),
+      "io_pressure_seconds": $(json_num_or_null "$buildkit_cache_prewarm_io_pressure_seconds"),
+      "body_phase": $(json_string_or_null "$buildkit_cache_prewarm_body_phase"),
+      "image_output_overlap_seconds": $(json_num_or_null "$buildkit_cache_prewarm_image_output_overlap_seconds"),
+      "cache_only_transitions": $(json_num_or_null "$buildkit_cache_prewarm_cache_only_transitions"),
+      "slot_limit_min": $(json_num_or_null "$buildkit_cache_prewarm_slot_limit_min"),
+      "slot_limit_max": $(json_num_or_null "$buildkit_cache_prewarm_slot_limit_max"),
+      "body_wait_seconds": $(json_num_or_null "$buildkit_cache_prewarm_body_wait_seconds"),
+      "body_wait_max_seconds": $(json_num_or_null "$buildkit_cache_prewarm_body_wait_max_seconds"),
+      "workers_current": $(json_num_or_null "$buildkit_cache_prewarm_workers_current"),
+      "workers_max": $(json_num_or_null "$buildkit_cache_prewarm_workers_max")
+    }
   },
   "startup_prefetch": {
     "duration_ms": $(json_num_or_null "$startup_prefetch_duration_ms"),
@@ -1907,7 +2392,9 @@ cat > "$json_path" <<JSON
   "classification": $classification_payload,
   "action_timings": $action_timings_payload,
   "transfer": {
-    "bytes_uploaded": $(json_num_or_null "$bytes_uploaded"),
+    "bytes_uploaded": $(json_num_or_null "$network_bytes_uploaded"),
+    "network_bytes_uploaded": $(json_num_or_null "$network_bytes_uploaded"),
+    "network_bytes_uploaded_source": $(json_string_or_null "$network_bytes_uploaded_source"),
     "bytes_downloaded": $(json_num_or_null "$bytes_downloaded")
   },
   "hit_behavior": $hit_behavior_payload,
@@ -1932,6 +2419,22 @@ JSON
   echo "| Lane | ${lane_label_value} |"
   echo "| Project | \`${project_repo}\` |"
   echo "| Commit | \`${project_ref}\` |"
+  if [[ -n "$github_run_id" ]]; then
+    if [[ -n "$github_run_url" ]]; then
+      echo "| GitHub run | [${github_run_id}](${github_run_url}) |"
+    else
+      echo "| GitHub run | ${github_run_id} |"
+    fi
+  fi
+  if [[ -n "$github_run_number" ]]; then
+    echo "| GitHub run number | ${github_run_number} |"
+  fi
+  if [[ -n "$github_run_attempt" ]]; then
+    echo "| GitHub run attempt | ${github_run_attempt} |"
+  fi
+  if [[ -n "$github_job" ]]; then
+    echo "| GitHub job | \`${github_job}\` |"
+  fi
   if [[ -n "$cli_version" ]]; then
     echo "| CLI version | \`${cli_version}\` |"
   fi
@@ -1967,11 +2470,23 @@ JSON
   if [[ -n "$reporting_reason" ]]; then
     echo "| Reporting reason | ${reporting_reason} |"
   fi
-  if [[ -n "$cache_import_status" ]]; then
-    echo "| Cache import status | ${cache_import_status} |"
+  if [[ -n "$effective_cache_import_status" ]]; then
+    echo "| Cache import status | ${effective_cache_import_status} |"
+  fi
+  if [[ -n "$raw_cache_import_status" && "$raw_cache_import_status" != "$effective_cache_import_status" ]]; then
+    echo "| Raw cache import status | ${raw_cache_import_status} |"
+  fi
+  if [[ -n "$cache_reuse_status" ]]; then
+    echo "| Cache reuse status | ${cache_reuse_status} |"
   fi
   if [[ -n "$buildkit_cached_steps" ]]; then
     echo "| BuildKit cached steps | ${buildkit_cached_steps} |"
+  fi
+  if [[ -n "$cli_image" ]]; then
+    echo "| CLI image | \`${cli_image}\` |"
+  fi
+  if [[ -n "$buildkit_image" ]]; then
+    echo "| BuildKit image | \`${buildkit_image}\` |"
   fi
   echo "| Slow reason build | ${slow_build_seconds}s |"
   if [[ -n "$slow_setup_seconds" ]]; then
@@ -2024,20 +2539,18 @@ JSON
   fi
 
   if [[ "$tool_outcomes_payload" != "null" ]]; then
-    gradle_phase_label="$(jq -r 'if .gradle.commit then "commit" elif .gradle.warm1 then "warm" else empty end' <<< "$tool_outcomes_payload")"
-    gradle_phase_payload="$(jq -c '.gradle.commit // .gradle.warm1 // null' <<< "$tool_outcomes_payload")"
-    gradle_warm_executed="$(jq -r '.executed_tasks // empty' <<< "$gradle_phase_payload")"
-    gradle_warm_from_cache="$(jq -r '.from_cache_tasks // empty' <<< "$gradle_phase_payload")"
-    gradle_warm_up_to_date="$(jq -r '.up_to_date_tasks // empty' <<< "$gradle_phase_payload")"
+    gradle_warm_executed="$(jq -r '.gradle.warm1.executed_tasks // empty' <<< "$tool_outcomes_payload")"
+    gradle_warm_from_cache="$(jq -r '.gradle.warm1.from_cache_tasks // empty' <<< "$tool_outcomes_payload")"
+    gradle_warm_up_to_date="$(jq -r '.gradle.warm1.up_to_date_tasks // empty' <<< "$tool_outcomes_payload")"
     gradle_warnings="$(jq -r '(.warnings // []) | join("; ")' <<< "$tool_outcomes_payload")"
     if [[ -n "$gradle_warm_executed" ]]; then
-      echo "| Gradle ${gradle_phase_label:-warm} executed tasks | ${gradle_warm_executed} |"
+      echo "| Gradle warm executed tasks | ${gradle_warm_executed} |"
     fi
     if [[ -n "$gradle_warm_from_cache" ]]; then
-      echo "| Gradle ${gradle_phase_label:-warm} from-cache tasks | ${gradle_warm_from_cache} |"
+      echo "| Gradle warm from-cache tasks | ${gradle_warm_from_cache} |"
     fi
     if [[ -n "$gradle_warm_up_to_date" ]]; then
-      echo "| Gradle ${gradle_phase_label:-warm} up-to-date tasks | ${gradle_warm_up_to_date} |"
+      echo "| Gradle warm up-to-date tasks | ${gradle_warm_up_to_date} |"
     fi
     if [[ -n "$gradle_warnings" ]]; then
       echo "| Tool outcome warnings | ${gradle_warnings} |"
@@ -2072,6 +2585,21 @@ JSON
   fi
   if [[ -n "$docker_cache_export_seconds" ]]; then
     echo "| Docker cache export | ${docker_cache_export_seconds}s |"
+  fi
+  if [[ -n "$buildkit_cache_prewarm_seconds" || -n "$buildkit_cache_prepare_seconds" || -n "$buildkit_cache_send_seconds" ]]; then
+    echo "| BuildKit cache export split | prewarm=${buildkit_cache_prewarm_seconds:-?}s; prepare=${buildkit_cache_prepare_seconds:-?}s; send=${buildkit_cache_send_seconds:-?}s |"
+  fi
+  if [[ -n "$buildkit_cache_prewarm_recursive" || -n "$buildkit_cache_prewarm_body_prepared" ]]; then
+    echo "| BuildKit prewarm shape | body_prepared=${buildkit_cache_prewarm_body_prepared:-?}; committed_bodies=${buildkit_cache_prewarm_committed_bodies:-?}; delegated_bodies=${buildkit_cache_prewarm_delegated_bodies:-?}; uploaded=${buildkit_cache_prewarm_uploaded:-?}; recursive=${buildkit_cache_prewarm_recursive:-?}; failed=${buildkit_cache_prewarm_failed:-?} |"
+  fi
+  if [[ -n "$buildkit_cache_prewarm_body_time_seconds" || -n "$buildkit_cache_prewarm_upload_time_seconds" || -n "$buildkit_cache_prewarm_body_wait_seconds" ]]; then
+    echo "| BuildKit prewarm work | body=${buildkit_cache_prewarm_body_time_seconds:-?}s; upload=${buildkit_cache_prewarm_upload_time_seconds:-?}s; body_wait=${buildkit_cache_prewarm_body_wait_seconds:-?}s; cpu_pressure=${buildkit_cache_prewarm_cpu_pressure_seconds:-?}s; io_pressure=${buildkit_cache_prewarm_io_pressure_seconds:-?}s |"
+  fi
+  if [[ -n "$buildkit_cache_prewarm_body_phase" || -n "$buildkit_cache_prewarm_image_output_overlap_seconds" ]]; then
+    echo "| BuildKit body phase | phase=${buildkit_cache_prewarm_body_phase:-?}; image_output_overlap=${buildkit_cache_prewarm_image_output_overlap_seconds:-?}s; cache_only_transitions=${buildkit_cache_prewarm_cache_only_transitions:-?} |"
+  fi
+  if [[ -n "$buildkit_cache_prewarm_body_slot_limit" || -n "$buildkit_cache_prewarm_body_downshifts" ]]; then
+    echo "| BuildKit body slots | limit=${buildkit_cache_prewarm_body_slot_limit:-?}/${buildkit_cache_prewarm_body_slot_max:-?}; active_max=${buildkit_cache_prewarm_body_active_max:-?}; downshifts=${buildkit_cache_prewarm_body_downshifts:-?}; reliefs=${buildkit_cache_prewarm_body_backlog_reliefs:-?} |"
   fi
   if [[ -n "$startup_prefetch_duration_ms" ]]; then
     echo "| Startup prefetch | ${startup_prefetch_duration_ms}ms |"
@@ -2131,8 +2659,8 @@ JSON
     echo "| Reporting note | ${reporting_note} |"
   fi
 
-  if [[ -n "$bytes_uploaded" ]]; then
-    echo "| Bytes uploaded | ${bytes_uploaded} |"
+  if [[ -n "$network_bytes_uploaded" ]]; then
+    echo "| Network bytes uploaded | ${network_bytes_uploaded} |"
   fi
   if [[ -n "$bytes_downloaded" ]]; then
     echo "| Bytes downloaded | ${bytes_downloaded} |"

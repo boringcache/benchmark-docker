@@ -59,9 +59,6 @@ inputs:
     description: Optional BoringCache CLI release tag. Canary runs can pass vcli-canary.
     required: false
     default: ''
-  benchmark_workspace:
-    required: false
-    default: ''
   free_disk_space:
     description: Reclaim runner disk before the Docker build. Useful for large real-world Docker images that can exhaust hosted-runner space mid-build.
     required: false
@@ -123,16 +120,13 @@ runs:
       registry: ghcr.io
       username: "${{ env.BORINGCACHE_GHCR_READ_USER || github.actor }}"
       password: "${{ env.BORINGCACHE_GHCR_READ_TOKEN || github.token }}"
-  - name: Install BoringCache CLI with boringcache/one
+  - name: Install BoringCache CLI
     if: "${{ inputs.strategy == 'boringcache' }}"
-    uses: boringcache/one@one-canary-e857cffbe965
-    with:
-      setup: none
-      mode: archive
-      workspace: "${{ env.BENCHMARK_WORKSPACE }}"
-      cli-version: "${{ inputs.cli_version }}"
-      cli-platform: "${{ inputs.cli_platform }}"
-      cache-runtime: false
+    run: >-
+      ./scripts/install-boringcache-cli.sh
+      "${{ inputs.cli_version }}"
+      "${{ inputs.cli_platform }}"
+    shell: bash
   - name: Checkout benchmark repo
     uses: actions/checkout@v6
     with:
@@ -483,21 +477,11 @@ runs:
     with:
       fetch-depth: 1
       path: .benchmark-config
-  - name: Install BoringCache CLI with boringcache/one
-    if: "${{ inputs.strategy == 'boringcache' }}"
-    uses: boringcache/one@one-canary-e857cffbe965
-    with:
-      setup: none
-      mode: archive
-      workspace: "${{ env.BENCHMARK_WORKSPACE }}"
-      cli-version: "${{ inputs.cli_version }}"
-      cli-platform: "${{ inputs.cli_platform }}"
-      cache-runtime: false
   - name: Measure BoringCache storage usage
     if: "${{ inputs.strategy == 'boringcache' }}"
     id: bc_cache_size
     env:
-      BORINGCACHE_RESTORE_TOKEN: "${{ env.BORINGCACHE_RESTORE_TOKEN || env.BORINGCACHE_API_TOKEN }}"
+      BORINGCACHE_RESTORE_TOKEN: "${{ env.BORINGCACHE_RESTORE_TOKEN }}"
     run: |
       tags_csv="${{ steps.scope.outputs.tags_csv }}"
       mkdir -p benchmark-storage
@@ -676,9 +660,7 @@ runs:
   - name: Write benchmark artifacts
     id: artifact_files
     env:
-      BORINGCACHE_API_TOKEN: "${{ env.BORINGCACHE_API_TOKEN || env.BORINGCACHE_RESTORE_TOKEN }}"
       BENCHMARK_CLI_VERSION: "${{ inputs.cli_version }}"
-      BENCHMARK_ACTION_REF: boringcache/one@one-canary-e857cffbe965
     run: |
       cache_summary_args=()
       if [[ -s benchmark-session-summary/benchmark-session-summary.json ]]; then

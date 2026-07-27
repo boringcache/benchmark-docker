@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-proxy_port="${BORINGCACHE_PROXY_PORT:-5000}"
+proxy_port=22243
 proxy_log="${BORINGCACHE_PROXY_LOG_PATH:-/tmp/boringcache-proxy-${proxy_port}.log}"
 build_log="$(mktemp /tmp/boringcache-build.XXXXXX)"
 status_snapshot_path="$(mktemp /tmp/boringcache-status.XXXXXX)"
@@ -316,7 +316,6 @@ run_wrapped_boringcache_build() {
     docker
     --workspace "${BENCHMARK_WORKSPACE:?Set BENCHMARK_WORKSPACE}"
     --tag "${CACHE_SCOPE:?Set CACHE_SCOPE}"
-    --port "$proxy_port"
     --cache-mode max
     --no-platform
     --no-git

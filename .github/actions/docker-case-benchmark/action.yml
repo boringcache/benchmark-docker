@@ -439,12 +439,15 @@ runs:
     if: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && always() }}"
     env:
       MOUNTCACHE_LOG: "${{ runner.temp }}/${{ inputs.benchmark_id }}-mountcache.log"
+      OBSERVABILITY_JSONL: "${{ runner.temp }}/${{ inputs.benchmark_id }}-boringcache-build-observability.jsonl"
       TARGET_CACHE_ID_PATTERN: "${{ inputs.rust_target_cache_id_pattern }}"
     run: |
       set -euo pipefail
       test -s "$MOUNTCACHE_LOG"
+      test -s "$OBSERVABILITY_JSONL"
       ./scripts/collect-rust-target-mount-evidence.py \
         --log "$MOUNTCACHE_LOG" \
+        --observability-jsonl "$OBSERVABILITY_JSONL" \
         --cache-id-pattern "$TARGET_CACHE_ID_PATTERN" \
         --output benchmark-target-state/rust-target-mount-growth.json
     shell: bash

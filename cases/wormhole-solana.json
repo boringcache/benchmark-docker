@@ -20,6 +20,10 @@
     "dockerfile": "solana/Dockerfile",
     "target": "builder",
     "image": "wormhole-solana",
+    "rust_target_cache": {
+      "kind": "buildkit-cache-mount",
+      "id_pattern": "^build_anchor_ntt_target$"
+    },
     "original_cache": "type=registry,ref=ghcr.io/wormhole-foundation/native-token-transfers/ntt-solana-contract:buildcache"
   },
   "workflow": {

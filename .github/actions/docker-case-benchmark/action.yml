@@ -48,6 +48,14 @@ inputs:
     description: Comma- or newline-separated Docker tool-cache entries such as sccache:kvrocks-cpp. When set, the benchmark uses `boringcache docker --tool-cache` so the CLI can inject the BuildKit secret into the wrapped build.
     required: false
     default: ''
+  rust_target_cache:
+    description: Enable the managed BuildKit cache-mount offloader for a declared Cargo target mount.
+    required: false
+    default: 'false'
+  rust_target_cache_id_pattern:
+    description: Regular expression matching the Cargo target cache-mount id.
+    required: false
+    default: ''
   build_output:
     description: Image output mode for UX parity. none measures cache-only build; local-registry pushes to a temporary local registry.
     required: false
@@ -250,6 +258,8 @@ runs:
       CACHE_SCOPE_PRIMARY: "${{ steps.scope.outputs.cache_scope_primary }}"
       CACHE_SCOPE_FALLBACK: "${{ steps.scope.outputs.cache_scope_fallback }}"
       BORINGCACHE_OBSERVABILITY_JSONL_PATH: "${{ runner.temp }}/${{ inputs.benchmark_id }}-boringcache-build-observability.jsonl"
+      BENCHMARK_MOUNTCACHE_LOG_OUTPUT: "${{ runner.temp }}/${{ inputs.benchmark_id }}-mountcache.log"
+      BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && '1' || '' }}"
       ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP: "${{ inputs.cache_lane == 'rolling' && 'true' || '' }}"
       IMAGE_TAG: "${{ inputs.image_tag }}"
       DOCKERFILE_PATH: "${{ inputs.dockerfile_path }}"
@@ -425,6 +435,19 @@ runs:
         echo "buildkit_cached_steps=${cached_steps}" >> "$GITHUB_OUTPUT"
       fi
     shell: bash
+  - name: Capture Rust target cache-mount evidence
+    if: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && always() }}"
+    env:
+      MOUNTCACHE_LOG: "${{ runner.temp }}/${{ inputs.benchmark_id }}-mountcache.log"
+      TARGET_CACHE_ID_PATTERN: "${{ inputs.rust_target_cache_id_pattern }}"
+    run: |
+      set -euo pipefail
+      test -s "$MOUNTCACHE_LOG"
+      ./scripts/collect-rust-target-mount-evidence.py \
+        --log "$MOUNTCACHE_LOG" \
+        --cache-id-pattern "$TARGET_CACHE_ID_PATTERN" \
+        --output benchmark-target-state/rust-target-mount-growth.json
+    shell: bash
   - name: Capture local registry diagnostics
     if: "${{ inputs.build_output == 'local-registry' && always() }}"
     run: |
@@ -465,6 +488,13 @@ runs:
       name: benchmark-session-summary-${{ inputs.benchmark_id }}-boringcache-${{ inputs.cache_lane }}
       path: benchmark-session-summary/benchmark-session-summary.json
       if-no-files-found: ignore
+  - name: Upload Rust target cache-mount evidence
+    if: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && always() }}"
+    uses: actions/upload-artifact@v6
+    with:
+      name: benchmark-target-${{ inputs.benchmark_id }}-boringcache-${{ inputs.cache_lane }}
+      path: benchmark-target-state/rust-target-mount-growth.json
+      if-no-files-found: error
   - name: Upload Docker tool-cache stats
     if: "${{ inputs.strategy == 'boringcache' && inputs.docker_tool_cache != '' && always() }}"
     uses: actions/upload-artifact@v6

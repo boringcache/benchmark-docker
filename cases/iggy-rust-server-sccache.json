@@ -25,6 +25,10 @@
     "build_args": [
       "IGGY_CI_BUILD=true"
     ],
+    "rust_target_cache": {
+      "kind": "buildkit-cache-mount",
+      "id_pattern": "^cargo-target-"
+    },
     "original_cache": "type=registry,ref=apache/iggy:buildcache-amd64 plus scoped type=gha BuildKit caches",
     "tool_cache": "sccache:{CACHE_SCOPE}-sccache"
   },

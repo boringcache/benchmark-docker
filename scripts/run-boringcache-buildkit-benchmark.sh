@@ -181,6 +181,14 @@ write_sccache_stats_from_build_log() {
   fi
 }
 
+write_mountcache_log() {
+  local output_path="${BENCHMARK_MOUNTCACHE_LOG_OUTPUT:-}"
+  [[ -n "$output_path" ]] || return 0
+
+  mkdir -p "$(dirname "$output_path")"
+  grep -F 'boringcache cache mount' "$build_log" > "$output_path" || :
+}
+
 
 capture_proxy_status() {
   local output_path="${1:-$status_snapshot_path}"
@@ -391,6 +399,7 @@ while true; do
     verify_expected_cache_backend
     import_status="$(build_import_status)"
     write_sccache_stats_from_build_log
+    write_mountcache_log
     if [[ "$mode" =~ ^(rolling|fresh)$ ]] && grep -Eq "$cache_export_pattern" "$build_log"; then
       capture_proxy_status
       write_build_metrics
@@ -414,6 +423,7 @@ while true; do
     tail -n 200 "$build_log" || true
     tail -n 400 "$proxy_log" || true
     write_build_diagnostics
+    write_mountcache_log
     exit "$status"
   fi
 

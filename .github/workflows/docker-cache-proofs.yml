@@ -10,6 +10,9 @@ on:
         required: true
         type: choice
         options:
+          - biar-automation-orchestrator
+          - biar-datalakehouse-api
+          - biar-jupyterhub
           - blockscout-frontend
           - phentrieve-api
           - wormhole-solana

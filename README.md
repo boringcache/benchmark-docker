@@ -18,6 +18,18 @@ Docker cases compare:
 
 Fresh runs seed an isolated cache from the pinned source. Rolling runs build a later pinned revision against the same stable cache scope.
 
+### BIAR Spark-stack proof
+
+The three BIAR cases reproduce the large images reported in
+[tazama-lf/biar#142](https://github.com/tazama-lf/biar/issues/142). Each case
+pins the same upstream commit while keeping the image's original Dockerfile,
+context, platform, and independent cache identity. The controlled series seeds
+a new BoringCache scope and then replays the unchanged source so the result
+measures full-cache behavior beyond BIAR's shared default GHA cache allowance.
+
+The protocol and upstream evidence are documented in
+[`prospects/biar-spark-images.md`](prospects/biar-spark-images.md).
+
 Rust cases that declare a Cargo target cache mount can also run a paired target
 proof. The ordinary BoringCache lane remains the product control. The target
 lane enables the managed BuildKit cache-mount offloader, keeps an independent

@@ -1,0 +1,22 @@
+{
+  "id": "biar-automation-orchestrator",
+  "source": {
+    "repo": "tazama-lf/biar",
+    "pain_url": "https://github.com/tazama-lf/biar/issues/142",
+    "evidence_run": "https://github.com/tazama-lf/biar/actions/runs/30026601442",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "6d18d74dd184bb43fc4cf8e24313cd0fc5370f17"
+  },
+  "docker": {
+    "context": "automation-orchestrator",
+    "dockerfile": "automation-orchestrator/Dockerfile",
+    "image": "biar-automation-orchestrator",
+    "platform": "linux/amd64",
+    "original_cache": "none in the painful run; current main uses type=gha,mode=min,scope=automation-orchestrator"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

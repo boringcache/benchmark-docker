@@ -1,0 +1,34 @@
+{
+  "id": "posit-connect-content-amd64",
+  "name": "Posit Connect content base image (amd64)",
+  "source": {
+    "repo": "posit-dev/images-connect",
+    "pain_url": "https://github.com/posit-dev/images-shared/issues/681",
+    "evidence_run": "https://github.com/posit-dev/images-connect/actions/runs/30313698156/job/90283968450",
+    "runner": "Posit uses a larger GitHub-hosted runner; this proof uses GitHub-hosted ubuntu-24.04"
+  },
+  "refs": {
+    "main": "a629ff884db05c69d7947dca6ae6113db6b915cf",
+    "seed": "caa8c46ecba63a8e1092bd5316e6e0041258ddde",
+    "rolling1": "a73b3390d574f7a150e2b73f4637270bea9d7f4f",
+    "rolling2": "b29a5dc63b1a170cc478f1de149fddf7dbae6458",
+    "rolling3": "06a2999cd4de9d95d893109386ea39963ae5ba16",
+    "rolling4": "a629ff884db05c69d7947dca6ae6113db6b915cf"
+  },
+  "docker": {
+    "context": ".",
+    "dockerfile": "connect-content/matrix/Containerfile.ubuntu2404.base",
+    "image": "posit-connect-content-amd64",
+    "platform": "linux/amd64",
+    "build_args": [
+      "PYTHON_VERSION=3.14.6",
+      "R_VERSION=4.6.1",
+      "QUARTO_VERSION=1.10.18"
+    ],
+    "original_cache": "Per-platform GHCR registry cache: type=registry,mode=max,compression=zstd,oci-mediatypes=true"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-24.04",
+    "free_disk_space": true
+  }
+}

@@ -86,6 +86,9 @@ CLI manages the builder and uses the native `type=boringcache` exporter.
 - [Grafana Cloud Cost Exporter Docker and Go cache proof](prospects/cloudcost-exporter.md)
   compares GitHub Actions Cache, BoringCache Docker, and BoringCache Docker + Go
   across five consecutive upstream source transitions.
+- [Posit Connect content layer-cache proof](prospects/posit-connect-content.md)
+  isolates the cache-backend part of Posit's registry-rate-limit work without
+  claiming to replace temporary, SOCI, or published image storage.
 
 ## Workflows
 

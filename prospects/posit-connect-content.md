@@ -32,8 +32,24 @@ unchanged target remains reusable after unrelated repository changes.
 
 ## Result
 
-Pending the isolated seed, three Dockerfile-changing rolling builds, and the
-current-main replay.
+The four changed-commit transitions completed successfully in both lanes.
+Their median measured BuildKit command was 66 seconds with BoringCache versus
+80.5 seconds with the existing GHCR registry cache, an 18% reduction. The
+unchanged current-main replay was effectively tied at 75 versus 74 seconds, so
+the result is a lower transport cost across real changes rather than a claim
+that BoringCache makes an already-hot no-op solve faster.
+
+| Source | GHCR registry cache | BoringCache |
+|---|---:|---:|
+| [`caa8c46e`](https://github.com/posit-dev/images-connect/commit/caa8c46ecba63a8e1092bd5316e6e0041258ddde) cold seed | [210s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30641960864) | [160s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30641960864) |
+| [`a73b3390`](https://github.com/posit-dev/images-connect/commit/a73b3390d574f7a150e2b73f4637270bea9d7f4f) | [184s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642341691) | [147s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642341691) |
+| [`b29a5dc6`](https://github.com/posit-dev/images-connect/commit/b29a5dc63b1a170cc478f1de149fddf7dbae6458) | [83s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642642336) | [68s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642642336) |
+| [`06a2999c`](https://github.com/posit-dev/images-connect/commit/06a2999cd4de9d95d893109386ea39963ae5ba16) | [78s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642873670) | [64s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642873670) |
+| [`a629ff88`](https://github.com/posit-dev/images-connect/commit/a629ff884db05c69d7947dca6ae6113db6b915cf) | [76s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643095125) | [64s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643095125) |
+| Unchanged `a629ff88` replay | [74s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643253701) | [75s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643253701) |
+
+Each value is the measured `docker buildx build`, including cache import and
+export. These are ordered transition samples, not repeated statistical trials.
 
 ## Scope boundary
 

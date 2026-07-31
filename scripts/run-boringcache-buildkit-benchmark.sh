@@ -17,6 +17,10 @@ allow_rolling_bootstrap="${ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP:-false}"
 build_output="${BENCHMARK_BUILD_OUTPUT:-none}"
 docker_tool_cache="${DOCKER_TOOL_CACHE:-}"
 docker_build_family="${DOCKER_BUILD_FAMILY:-buildx-build}"
+docker_working_directory="${BENCHMARK_DOCKER_WORKING_DIRECTORY:-}"
+docker_bake_file="${DOCKER_BAKE_FILE:-}"
+docker_bake_group="${DOCKER_BAKE_GROUP:-}"
+resolved_cache_tags_csv=""
 export BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS="${BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS:-1}"
 cleanup() { :; }
 trap cleanup EXIT
@@ -32,6 +36,20 @@ find_step_seconds() {
   sed -nE "s/^#${step_id} DONE ([0-9]+(\\.[0-9]+)?)s$/\\1/p" "$build_log" | tail -n1
 }
 
+find_max_step_seconds() {
+  local pattern="$1"
+  local seconds=""
+  local step_id=""
+
+  while IFS= read -r step_id; do
+    [[ -n "$step_id" ]] || continue
+    seconds="$(find_step_seconds "$step_id")"
+    [[ -n "$seconds" ]] && printf '%s\n' "$seconds"
+  done < <(sed -nE "s/^#([0-9]+)( \\[[^]]+\\])? ${pattern}.*/\\1/p" "$build_log" | sort -u) \
+    | sort -nr \
+    | head -n1
+}
+
 write_build_metrics() {
   local output_path="${BENCHMARK_METRICS_OUTPUT:-}"
   [[ -n "$output_path" ]] || return 0
@@ -43,17 +61,25 @@ write_build_metrics() {
   local import_status=""
   local cached_steps=""
 
-  import_step="$(find_step_id "importing cache manifest from")"
-  export_step="$(find_step_id "exporting cache to boringcache")"
-  import_seconds="$(find_step_seconds "$import_step")"
-  export_seconds="$(find_step_seconds "$export_step")"
+  if [[ "$docker_build_family" == "bake" ]]; then
+    import_seconds="$(find_max_step_seconds "importing cache manifest from")"
+    export_seconds="$(find_max_step_seconds "exporting cache to boringcache")"
+  else
+    import_step="$(find_step_id "importing cache manifest from")"
+    export_step="$(find_step_id "exporting cache to boringcache")"
+    import_seconds="$(find_step_seconds "$import_step")"
+    export_seconds="$(find_step_seconds "$export_step")"
+  fi
   import_status="$(build_import_status)"
-  cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+  cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
 
   mkdir -p "$(dirname "$output_path")"
   : > "$output_path"
   echo "cache_import_status=$import_status" >> "$output_path"
   echo "buildkit_cached_steps=$cached_steps" >> "$output_path"
+  if [[ -n "$resolved_cache_tags_csv" ]]; then
+    echo "resolved_cache_tags_csv=$resolved_cache_tags_csv" >> "$output_path"
+  fi
   if [[ -n "$import_seconds" ]]; then
     echo "docker_cache_import_seconds=$import_seconds" >> "$output_path"
   fi
@@ -146,7 +172,7 @@ write_build_metrics() {
 }
 
 verify_expected_cache_backend() {
-  if ! grep -qE '^#[0-9]+ exporting cache to boringcache$' "$build_log"; then
+  if ! grep -qE '^#[0-9]+( \[[^]]+\])? exporting cache to boringcache$' "$build_log"; then
     echo "Expected the managed type=boringcache exporter, but the build did not report 'exporting cache to boringcache'." >&2
     return 1
   fi
@@ -257,7 +283,7 @@ write_build_diagnostics() {
   [[ -n "$output_path" ]] || return 0
 
   local cached_steps=""
-  cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+  cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
   local observability_path="${BORINGCACHE_OBSERVABILITY_JSONL_PATH:-}"
 
   mkdir -p "$(dirname "$output_path")"
@@ -265,6 +291,7 @@ write_build_diagnostics() {
     echo "strategy=boringcache"
     echo "buildkit_backend=boringcache"
     echo "mode=${mode}"
+    echo "docker_build_family=${docker_build_family}"
     echo "builder=${BUILDER:-}"
     echo "cache_scope=${CACHE_SCOPE:-}"
     echo "cache_from=${CACHE_FROM:-}"
@@ -315,13 +342,92 @@ write_build_diagnostics() {
   } > "$output_path"
 }
 
+prepare_build_command() {
+  build_command=()
+
+  case "$docker_build_family" in
+    buildx-build)
+      build_command=(
+        docker buildx build
+        --file "$DOCKERFILE_PATH"
+        --tag "$IMAGE_TAG"
+        --progress=plain
+      )
+      build_command+=("${extra_args[@]}")
+      build_command+=("${wrapped_cache_args[@]}")
+      build_command+=("${output_args[@]}")
+      build_command+=("$BENCHMARK_DOCKER_CONTEXT")
+      ;;
+    classic-build)
+      build_command=(
+        docker build
+        --file "$DOCKERFILE_PATH"
+        --tag "$IMAGE_TAG"
+        --progress=plain
+      )
+      build_command+=("${extra_args[@]}")
+      build_command+=("${wrapped_cache_args[@]}")
+      build_command+=("${output_args[@]}")
+      build_command+=("$BENCHMARK_DOCKER_CONTEXT")
+      ;;
+    bake)
+      [[ -n "$docker_working_directory" ]] || { echo "BENCHMARK_DOCKER_WORKING_DIRECTORY is required for Bake" >&2; return 1; }
+      [[ -n "$docker_bake_file" ]] || { echo "DOCKER_BAKE_FILE is required for Bake" >&2; return 1; }
+      [[ -n "$docker_bake_group" ]] || { echo "DOCKER_BAKE_GROUP is required for Bake" >&2; return 1; }
+      build_command=(
+        docker buildx bake
+        --file "$docker_bake_file"
+        --progress=plain
+      )
+      build_command+=("${extra_args[@]}")
+      build_command+=("${wrapped_cache_args[@]}")
+      build_command+=("${output_args[@]}")
+      build_command+=("$docker_bake_group")
+      ;;
+    *)
+      echo "Unknown Docker build family: ${docker_build_family}" >&2
+      return 1
+      ;;
+  esac
+}
+
+capture_bake_plan() {
+  [[ "$docker_build_family" == "bake" ]] || return 0
+
+  local plan_path="${BENCHMARK_BAKE_PLAN_OUTPUT:-}"
+  if [[ -z "$plan_path" ]]; then
+    plan_path="$(mktemp /tmp/boringcache-bake-plan.XXXXXX.json)"
+  else
+    mkdir -p "$(dirname "$plan_path")"
+  fi
+
+  (
+    cd "$docker_working_directory"
+    boringcache "${boringcache_args[@]}" --dry-run --json -- "${build_command[@]}"
+  ) > "$plan_path"
+
+  jq -e '.buildkit_cache.build_targets | length > 0' "$plan_path" >/dev/null
+  resolved_cache_tags_csv="$(
+    jq -r '
+      .tag_plans[].transport_refs[]?
+      | select(.role == "save")
+      | .reference
+      | capture("ref=[^,]*/cache:(?<tag>[^,]+)").tag
+    ' "$plan_path" | awk '!seen[$0]++' | paste -sd, -
+  )"
+  if [[ -z "$resolved_cache_tags_csv" ]]; then
+    echo "BoringCache Bake dry-run did not expose any save cache refs." >&2
+    return 1
+  fi
+}
+
 run_wrapped_boringcache_build() {
   local phase_hint="cold"
   if [[ "$mode" == "rolling" ]]; then
     phase_hint="commit"
   fi
 
-  local boringcache_args=(
+  boringcache_args=(
     docker
     --workspace "${BENCHMARK_WORKSPACE:?Set BENCHMARK_WORKSPACE}"
     --tag "${CACHE_SCOPE:?Set CACHE_SCOPE}"
@@ -342,24 +448,19 @@ run_wrapped_boringcache_build() {
     [[ "$cache_arg" == "--no-cache" ]] && wrapped_cache_args+=("$cache_arg")
   done
 
+  prepare_build_command
+  capture_bake_plan
+
   : > "$build_log"
-  local docker_command=(docker buildx build)
-  if [[ "$docker_build_family" == "classic-build" ]]; then
-    docker_command=(docker build)
-  elif [[ "$docker_build_family" != "buildx-build" ]]; then
-    echo "Unknown DOCKER_BUILD_FAMILY: ${docker_build_family}" >&2
-    exit 1
-  fi
   set +e
-  DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- \
-    "${docker_command[@]}" \
-    --file "$DOCKERFILE_PATH" \
-    --tag "$IMAGE_TAG" \
-    --progress=plain \
-    ${extra_args[@]+"${extra_args[@]}"} \
-    ${wrapped_cache_args[@]+"${wrapped_cache_args[@]}"} \
-    ${output_args[@]+"${output_args[@]}"} \
-    "$BENCHMARK_DOCKER_CONTEXT" 2>&1 | tee "$build_log"
+  if [[ "$docker_build_family" == "bake" ]]; then
+    (
+      cd "$docker_working_directory"
+      DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}"
+    ) 2>&1 | tee "$build_log"
+  else
+    DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}" 2>&1 | tee "$build_log"
+  fi
   status=${PIPESTATUS[0]}
   set -e
 }

@@ -52,9 +52,12 @@ if [[ "$ref_key" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 project_repo="$(jq -er '.source.repo' "$case_file")"
 build_family="$(jq -r '.docker.build_family // "buildx-build"' "$case_file")"
-dockerfile="$(jq -er '.docker.dockerfile' "$case_file")"
-context="$(jq -er '.docker.context' "$case_file")"
+dockerfile="$(jq -r '.docker.dockerfile // ""' "$case_file")"
+context="$(jq -r '.docker.context // "."' "$case_file")"
 image="$(jq -er '.docker.image' "$case_file")"
+bake_file="$(jq -r '.docker.bake_file // ""' "$case_file")"
+bake_group="$(jq -r '.docker.bake_group // ""' "$case_file")"
+expected_images="$(jq -r '.docker.expected_images[]?' "$case_file")"
 runner_label="$(jq -r '.workflow.runner_label // "ubuntu-latest"' "$case_file")"
 cli_platform="$(jq -r '.workflow.cli_platform // "linux-amd64"' "$case_file")"
 free_disk_space="$(jq -r '.workflow.free_disk_space // false' "$case_file")"
@@ -69,17 +72,27 @@ source_path=".work/${case_id}/source"
 image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
 case "$build_family" in
-  buildx-build|classic-build) ;;
+  buildx-build|classic-build)
+    if [[ -z "$dockerfile" ]]; then
+      echo "docker.dockerfile is required for ${build_family} case ${case_id}" >&2
+      exit 1
+    fi
+    if [[ "$build_family" == "classic-build" && "$build_output" != "load" ]]; then
+      echo "classic-build case ${case_id} requires build_output=load to preserve the upstream local-image contract" >&2
+      exit 1
+    fi
+    ;;
+  bake)
+    if [[ -z "$bake_file" || -z "$bake_group" ]]; then
+      echo "docker.bake_file and docker.bake_group are required for Bake case ${case_id}" >&2
+      exit 1
+    fi
+    ;;
   *)
     echo "Unsupported docker.build_family for ${case_id}: ${build_family}" >&2
     exit 1
     ;;
 esac
-
-if [[ "$build_family" == "classic-build" && "$build_output" != "load" ]]; then
-  echo "classic-build case ${case_id} requires build_output=load to preserve the upstream local-image contract" >&2
-  exit 1
-fi
 
 if [[ "$build_output" == "local-registry" ]]; then
   image_tag="127.0.0.1:5001/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
@@ -110,8 +123,12 @@ write_output "cache_id" "$case_id"
 write_output "project_repo" "$project_repo"
 write_output "project_ref" "$project_ref"
 write_output "docker_build_family" "$build_family"
-write_output "dockerfile_path" "${source_path}/${dockerfile}"
+write_output "docker_working_directory" "$source_path"
+write_output "dockerfile_path" "${dockerfile:+${source_path}/${dockerfile}}"
 write_output "docker_context" "${source_path}/${context}"
+write_output "docker_bake_file" "$bake_file"
+write_output "docker_bake_group" "$bake_group"
+write_multiline_output "docker_expected_images" "$expected_images"
 write_output "image_tag" "$image_tag"
 write_output "runner_label" "$runner_label"
 write_output "cli_platform" "$cli_platform"

@@ -43,6 +43,22 @@ inputs:
   docker_context:
     required: false
     default: ".work/source"
+  docker_working_directory:
+    description: Prepared upstream directory used for Bake project discovery.
+    required: false
+    default: ''
+  docker_bake_file:
+    description: Bake definition path relative to docker_working_directory.
+    required: false
+    default: ''
+  docker_bake_group:
+    description: Bake group or target selection exercised by the case.
+    required: false
+    default: ''
+  docker_expected_images:
+    description: Newline-separated image tags that must exist locally after a load build.
+    required: false
+    default: ''
   image_tag:
     required: true
   docker_build_extra_args:
@@ -105,6 +121,24 @@ runs:
       case "$STRATEGY" in
         actions-cache|boringcache|registry-cache) ;;
         *) echo "Unknown Docker benchmark strategy: $STRATEGY" >&2; exit 1 ;;
+      esac
+    shell: bash
+  - name: Validate Docker build family
+    env:
+      DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
+      DOCKER_WORKING_DIRECTORY: "${{ inputs.docker_working_directory }}"
+      DOCKER_BAKE_FILE: "${{ inputs.docker_bake_file }}"
+      DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
+    run: |
+      set -euo pipefail
+      case "$DOCKER_BUILD_FAMILY" in
+        buildx-build|classic-build) ;;
+        bake)
+          [[ -n "$DOCKER_WORKING_DIRECTORY" ]]
+          [[ -n "$DOCKER_BAKE_FILE" ]]
+          [[ -n "$DOCKER_BAKE_GROUP" ]]
+          ;;
+        *) echo "Unknown Docker build family: $DOCKER_BUILD_FAMILY" >&2; exit 1 ;;
       esac
     shell: bash
   - name: Free disk space
@@ -315,12 +349,16 @@ runs:
       CACHE_SCOPE_FALLBACK: "${{ steps.scope.outputs.cache_scope_fallback }}"
       BORINGCACHE_OBSERVABILITY_JSONL_PATH: "${{ runner.temp }}/${{ inputs.benchmark_id }}-boringcache-build-observability.jsonl"
       BENCHMARK_MOUNTCACHE_LOG_OUTPUT: "${{ runner.temp }}/${{ inputs.benchmark_id }}-mountcache.log"
+      BENCHMARK_BAKE_PLAN_OUTPUT: "benchmark-diagnostics/${{ inputs.benchmark_id }}-boringcache-${{ inputs.cache_lane }}-bake-plan.json"
       BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && '1' || '' }}"
       ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP: "${{ inputs.cache_lane == 'rolling' && 'true' || '' }}"
       IMAGE_TAG: "${{ inputs.image_tag }}"
       DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
       DOCKERFILE_PATH: "${{ inputs.dockerfile_path }}"
       BENCHMARK_DOCKER_CONTEXT: "${{ inputs.docker_context }}"
+      BENCHMARK_DOCKER_WORKING_DIRECTORY: "${{ inputs.docker_working_directory }}"
+      DOCKER_BAKE_FILE: "${{ inputs.docker_bake_file }}"
+      DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
       DOCKER_TOOL_CACHE: "${{ inputs.docker_tool_cache }}"
       GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"
       REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"
@@ -385,6 +423,19 @@ runs:
           [[ -n "$step_id" ]] || return 0
           sed -nE "s/^#${step_id} DONE ([0-9]+(\\.[0-9]+)?)s$/\\1/p" "$build_log" | tail -n1
         }
+        find_max_step_seconds() {
+          local pattern="$1"
+          local seconds=""
+          local step_id=""
+
+          while IFS= read -r step_id; do
+            [[ -n "$step_id" ]] || continue
+            seconds="$(find_step_seconds "$step_id")"
+            [[ -n "$seconds" ]] && printf '%s\n' "$seconds"
+          done < <(sed -nE "s/^#([0-9]+)( \\[[^]]+\\])? ${pattern}.*/\\1/p" "$build_log" | sort -u) \
+            | sort -nr \
+            | head -n1
+        }
 
         selected_scope="$CACHE_SCOPE_PRIMARY"
         registry_cache_import_status=""
@@ -392,6 +443,28 @@ runs:
         registry_cache_target=""
         phase_start="${{ steps.build_timing_start.outputs.started_at }}"
         start="$(date +%s)"
+        bake_targets=()
+        if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+          if [[ "$strategy" == "registry-cache" ]]; then
+            echo "The GHCR control does not support multi-target Bake cases." >&2
+            exit 1
+          fi
+          while IFS= read -r target; do
+            [[ -n "$target" ]] && bake_targets+=("$target")
+          done < <(
+            cd "$BENCHMARK_DOCKER_WORKING_DIRECTORY"
+            docker buildx bake \
+              --builder "$BUILDER" \
+              --file "$DOCKER_BAKE_FILE" \
+              --print \
+              "$DOCKER_BAKE_GROUP" \
+              | jq -r '.target | keys[]'
+          )
+          if [[ "${#bake_targets[@]}" -eq 0 ]]; then
+            echo "Docker Bake did not resolve any build targets." >&2
+            exit 1
+          fi
+        fi
         attempt=1
         while true; do
           extra_args=()
@@ -419,7 +492,19 @@ runs:
               exit 1
               ;;
           esac
-          if [[ "$CACHE_LANE" == "rolling" ]]; then
+          if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+            build_cache_args=()
+            if [[ "$CACHE_LANE" == "fresh" ]]; then
+              build_cache_args+=(--no-cache)
+            fi
+            for target in "${bake_targets[@]}"; do
+              target_scope="${selected_scope}-target-${target}"
+              if [[ "$CACHE_LANE" == "rolling" ]]; then
+                build_cache_args+=(--set "${target}.cache-from=type=gha,scope=${target_scope}")
+              fi
+              build_cache_args+=(--set "${target}.cache-to=type=gha,mode=max,scope=${target_scope}")
+            done
+          elif [[ "$CACHE_LANE" == "rolling" ]]; then
             if [[ "$strategy" == "actions-cache" ]]; then
               build_cache_args=(
                 --cache-from "type=gha,scope=${selected_scope}"
@@ -459,15 +544,29 @@ runs:
           fi
           : > "$build_log"
           set +e
-          DOCKER_BUILDKIT=1 docker buildx build \
-            --builder "$BUILDER" \
-            --file ${{ inputs.dockerfile_path }} \
-            --tag ${{ inputs.image_tag }} \
-            --progress=plain \
-            "${extra_args[@]}" \
-            "${build_cache_args[@]}" \
-            "${output_args[@]}" \
-            ${{ inputs.docker_context }} 2>&1 | tee "$build_log"
+          if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+            (
+              cd "$BENCHMARK_DOCKER_WORKING_DIRECTORY"
+              DOCKER_BUILDKIT=1 docker buildx bake \
+                --builder "$BUILDER" \
+                --file "$DOCKER_BAKE_FILE" \
+                --progress=plain \
+                "${extra_args[@]}" \
+                "${build_cache_args[@]}" \
+                "${output_args[@]}" \
+                "$DOCKER_BAKE_GROUP"
+            ) 2>&1 | tee "$build_log"
+          else
+            DOCKER_BUILDKIT=1 docker buildx build \
+              --builder "$BUILDER" \
+              --file "$DOCKERFILE_PATH" \
+              --tag "$IMAGE_TAG" \
+              --progress=plain \
+              "${extra_args[@]}" \
+              "${build_cache_args[@]}" \
+              "${output_args[@]}" \
+              "$BENCHMARK_DOCKER_CONTEXT" 2>&1 | tee "$build_log"
+          fi
           status=${PIPESTATUS[0]}
           set -e
 
@@ -490,17 +589,30 @@ runs:
 
         export_verified=0
         if [[ "$strategy" == "actions-cache" ]]; then
-          for _ in $(seq 1 20); do
-            response="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100&key=index-${selected_scope}" 2>/dev/null || true)"
-            if [[ -n "$response" ]] && jq -e '.actions_caches | type == "array"' <<<"$response" >/dev/null 2>&1; then
-              matches="$(jq '.actions_caches | length' <<<"$response")"
-              if [[ "$matches" -gt 0 ]]; then
-                export_verified=1
-                break
+          expected_scopes=("$selected_scope")
+          if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+            expected_scopes=()
+            for target in "${bake_targets[@]}"; do
+              expected_scopes+=("${selected_scope}-target-${target}")
+            done
+          fi
+          verified_scopes=0
+          for expected_scope in "${expected_scopes[@]}"; do
+            for _ in $(seq 1 20); do
+              response="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100&key=index-${expected_scope}" 2>/dev/null || true)"
+              if [[ -n "$response" ]] && jq -e '.actions_caches | type == "array"' <<<"$response" >/dev/null 2>&1; then
+                matches="$(jq '.actions_caches | length' <<<"$response")"
+                if [[ "$matches" -gt 0 ]]; then
+                  verified_scopes=$((verified_scopes + 1))
+                  break
+                fi
               fi
-            fi
-            sleep 3
+              sleep 3
+            done
           done
+          if [[ "$verified_scopes" -eq "${#expected_scopes[@]}" ]]; then
+            export_verified=1
+          fi
         else
           for _ in $(seq 1 20); do
             if docker buildx imagetools inspect "$registry_cache_target" >/dev/null 2>&1; then
@@ -520,8 +632,12 @@ runs:
         echo "cache_scope=${selected_scope}" >> "$GITHUB_OUTPUT"
         echo "seconds=$((end - phase_start))" >> "$GITHUB_OUTPUT"
         echo "build_seconds=$((end - start))" >> "$GITHUB_OUTPUT"
-        import_step="$(find_step_id "importing cache manifest from")"
-        import_seconds="$(find_step_seconds "$import_step")"
+        if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+          import_seconds="$(find_max_step_seconds "importing cache manifest from")"
+        else
+          import_step="$(find_step_id "importing cache manifest from")"
+          import_seconds="$(find_step_seconds "$import_step")"
+        fi
         if [[ -n "$import_seconds" ]]; then
           echo "docker_cache_import_seconds=${import_seconds}" >> "$GITHUB_OUTPUT"
         fi
@@ -530,11 +646,20 @@ runs:
         else
           export_step="$(find_step_id "exporting cache to registry")"
         fi
-        export_seconds="$(find_step_seconds "$export_step")"
+        if [[ "$DOCKER_BUILD_FAMILY" == "bake" ]]; then
+          if [[ "$strategy" == "actions-cache" ]]; then
+            export_pattern="preparing build cache for export"
+          else
+            export_pattern="exporting cache to registry"
+          fi
+          export_seconds="$(find_max_step_seconds "$export_pattern")"
+        else
+          export_seconds="$(find_step_seconds "$export_step")"
+        fi
         if [[ -n "$export_seconds" ]]; then
           echo "docker_cache_export_seconds=${export_seconds}" >> "$GITHUB_OUTPUT"
         fi
-        cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+        cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
         echo "buildkit_cached_steps=${cached_steps}" >> "$GITHUB_OUTPUT"
         if [[ "$strategy" == "registry-cache" ]]; then
           echo "cache_import_status=${registry_cache_import_status}" >> "$GITHUB_OUTPUT"
@@ -566,6 +691,17 @@ runs:
           fi
         fi
       fi
+    shell: bash
+  - name: Verify loaded images
+    if: "${{ inputs.build_output == 'load' && inputs.docker_expected_images != '' }}"
+    env:
+      DOCKER_EXPECTED_IMAGES: "${{ inputs.docker_expected_images }}"
+    run: |
+      set -euo pipefail
+      while IFS= read -r image; do
+        [[ -n "$image" ]] || continue
+        docker image inspect --format '{{.RepoTags}} {{.Id}}' "$image"
+      done <<< "$DOCKER_EXPECTED_IMAGES"
     shell: bash
   - name: Capture Rust target cache-mount evidence
     if: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && always() }}"
@@ -655,7 +791,7 @@ runs:
     env:
       BORINGCACHE_RESTORE_TOKEN: "${{ env.BORINGCACHE_RESTORE_TOKEN }}"
     run: |
-      tags_csv="${{ steps.scope.outputs.tags_csv }}"
+      tags_csv="${{ steps.measured_build.outputs.resolved_cache_tags_csv || steps.scope.outputs.tags_csv }}"
       mkdir -p benchmark-storage
       breakdown_path="benchmark-storage/boringcache-storage-breakdown.json"
       bytes="$(BORINGCACHE_STORAGE_BREAKDOWN_PATH="$breakdown_path" .benchmark-config/scripts/sum-boringcache-check-sizes.sh "$BENCHMARK_WORKSPACE" "$tags_csv")"

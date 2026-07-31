@@ -16,6 +16,7 @@ on:
           - dependabot-updater-core
           - iggy-rust-server
           - iggy-rust-server-sccache
+          - proteus-controller-multiarch
           - kvrocks-docker
           - kvrocks-docker-sccache
           - nmisp-nightly

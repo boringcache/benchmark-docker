@@ -22,8 +22,38 @@ Rust cases that declare a Cargo target cache mount can also run a paired target
 proof. The ordinary BoringCache lane remains the product control. The target
 lane enables the managed BuildKit cache-mount offloader, keeps an independent
 cache scope, and records the target archive's compressed bytes, logical bytes,
-file count, and rolling growth. Iggy and Wormhole currently expose this proof;
-other cases fail early rather than silently running without target evidence.
+file count, and rolling growth. Iggy, Wormhole, and Proteus currently expose
+this proof; other cases fail early rather than silently running without target
+evidence.
+
+### Proteus multi-arch Rust proof
+
+The `proteus-controller-multiarch` case starts from the exact commit in
+[CraftingTech/proteus#45](https://github.com/CraftingTech/proteus/issues/45).
+That upstream run pushed both image tags, then failed after 4h36 when its
+`type=gha,mode=max` cache export returned `not_found`.
+
+The proof keeps the distroless runtime and the original amd64 + arm64 output,
+while making each cache boundary visible:
+
+- the architecture-independent Dioxus WASM build runs once on the native build
+  platform instead of reinstalling and rebuilding under QEMU;
+- BoringCache's managed BuildKit backend owns the ordinary OCI layer cache;
+- `--tool-cache sccache` reuses compiler outputs inside the Docker build; and
+- the target variant offloads the UI and per-architecture controller
+  `/src/target` cache mounts and records their compressed bytes, logical bytes,
+  file counts, and growth.
+
+Run the original GHA control, the ordinary BoringCache lane, and the additional
+target-mount lane against a local multi-platform registry push with:
+
+```sh
+./scripts/dispatch-proof-series.sh \
+  --case proteus-controller-multiarch \
+  --build-output local-registry \
+  --compare-rust-target \
+  --warm-replay
+```
 
 Run an ordered pure-versus-target series with:
 

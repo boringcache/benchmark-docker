@@ -45,7 +45,7 @@ find_max_step_seconds() {
     [[ -n "$step_id" ]] || continue
     seconds="$(find_step_seconds "$step_id")"
     [[ -n "$seconds" ]] && printf '%s\n' "$seconds"
-  done < <(sed -nE "s/^#([0-9]+) ${pattern}.*/\\1/p" "$build_log" | sort -u) \
+  done < <(sed -nE "s/^#([0-9]+)( \\[[^]]+\\])? ${pattern}.*/\\1/p" "$build_log" | sort -u) \
     | sort -nr \
     | head -n1
 }
@@ -71,7 +71,7 @@ write_build_metrics() {
     export_seconds="$(find_step_seconds "$export_step")"
   fi
   import_status="$(build_import_status)"
-  cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+  cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
 
   mkdir -p "$(dirname "$output_path")"
   : > "$output_path"
@@ -172,7 +172,7 @@ write_build_metrics() {
 }
 
 verify_expected_cache_backend() {
-  if ! grep -qE '^#[0-9]+ exporting cache to boringcache$' "$build_log"; then
+  if ! grep -qE '^#[0-9]+( \[[^]]+\])? exporting cache to boringcache$' "$build_log"; then
     echo "Expected the managed type=boringcache exporter, but the build did not report 'exporting cache to boringcache'." >&2
     return 1
   fi
@@ -283,7 +283,7 @@ write_build_diagnostics() {
   [[ -n "$output_path" ]] || return 0
 
   local cached_steps=""
-  cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+  cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
   local observability_path="${BORINGCACHE_OBSERVABILITY_JSONL_PATH:-}"
 
   mkdir -p "$(dirname "$output_path")"

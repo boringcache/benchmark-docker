@@ -411,7 +411,7 @@ runs:
             [[ -n "$step_id" ]] || continue
             seconds="$(find_step_seconds "$step_id")"
             [[ -n "$seconds" ]] && printf '%s\n' "$seconds"
-          done < <(sed -nE "s/^#([0-9]+) ${pattern}.*/\\1/p" "$build_log" | sort -u) \
+          done < <(sed -nE "s/^#([0-9]+)( \\[[^]]+\\])? ${pattern}.*/\\1/p" "$build_log" | sort -u) \
             | sort -nr \
             | head -n1
         }
@@ -638,7 +638,7 @@ runs:
         if [[ -n "$export_seconds" ]]; then
           echo "docker_cache_export_seconds=${export_seconds}" >> "$GITHUB_OUTPUT"
         fi
-        cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
+        cached_steps="$(grep -Ec '^#[0-9]+( \[[^]]+\])? CACHED$' "$build_log" || true)"
         echo "buildkit_cached_steps=${cached_steps}" >> "$GITHUB_OUTPUT"
         if [[ "$strategy" == "registry-cache" ]]; then
           echo "cache_import_status=${registry_cache_import_status}" >> "$GITHUB_OUTPUT"

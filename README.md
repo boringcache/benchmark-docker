@@ -81,6 +81,12 @@ replaced.
 GHCR is only a comparison. BoringCache always uses its normal product path: the
 CLI manages the builder and uses the native `type=boringcache` exporter.
 
+## Prospect Reports
+
+- [Grafana Cloud Cost Exporter Docker and Go cache proof](prospects/cloudcost-exporter.md)
+  compares GitHub Actions Cache, BoringCache Docker, and BoringCache Docker + Go
+  across five consecutive upstream source transitions.
+
 ## Workflows
 
 - [`Docker Benchmark`](.github/workflows/docker-cache-proofs.yml)

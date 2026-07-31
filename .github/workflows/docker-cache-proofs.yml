@@ -17,6 +17,8 @@ on:
           - dependabot-updater-core
           - iggy-rust-server
           - iggy-rust-server-sccache
+          - cloudcost-exporter-amd64
+          - cloudcost-exporter-amd64-go
           - proteus-controller-multiarch
           - kvrocks-docker
           - kvrocks-docker-sccache

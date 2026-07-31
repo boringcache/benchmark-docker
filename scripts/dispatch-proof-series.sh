@@ -16,6 +16,7 @@ include_rolling_bootstrap="true"
 wait_for_runs="true"
 dry_run="false"
 warm_replay="false"
+watch_interval_seconds="${GH_RUN_WATCH_INTERVAL_SECONDS:-60}"
 rust_target_cache="false"
 compare_rust_target="false"
 rolling_refs=()
@@ -231,10 +232,10 @@ wait_for_run() {
       # A Docker proof can run for well over ten minutes. The gh default polls
       # every three seconds, which can exhaust the authenticated REST quota
       # during a multi-commit series.
-      gh run watch "$run_id" --repo "$repo" --exit-status --interval 30
+      gh run watch "$run_id" --repo "$repo" --exit-status --interval "$watch_interval_seconds"
       return 0
     fi
-    sleep 5
+    sleep "$watch_interval_seconds"
   done
 
   echo "Could not find dispatched run for ${title_prefix}" >&2

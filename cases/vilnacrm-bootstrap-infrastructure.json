@@ -16,6 +16,7 @@
     "main": "d3015695def1c704b1265db347ed411690314b32"
   },
   "docker": {
+    "cache_id": "vilnacrm-pulumi",
     "build_family": "compose",
     "compose_file": "docker-compose.yml",
     "compose_prepare_command": "python3 ./scripts/prepare_docker_context.py",

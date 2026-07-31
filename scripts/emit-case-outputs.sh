@@ -51,6 +51,7 @@ if [[ "$ref_key" =~ ^[0-9a-f]{40}$ ]]; then
   benchmark_ref="${ref_key:0:12}"
 fi
 project_repo="$(jq -er '.source.repo' "$case_file")"
+cache_id="$(jq -r --arg fallback "$case_id" '.docker.cache_id // $fallback' "$case_file")"
 build_family="$(jq -r '.docker.build_family // "buildx-build"' "$case_file")"
 dockerfile="$(jq -r '.docker.dockerfile // ""' "$case_file")"
 context="$(jq -r '.docker.context // "."' "$case_file")"
@@ -120,7 +121,7 @@ extra_args="$(
 write_output "case_id" "$case_id"
 write_output "case_ref_key" "$ref_key"
 write_output "benchmark_id" "${case_id}-${benchmark_ref}"
-write_output "cache_id" "$case_id"
+write_output "cache_id" "$cache_id"
 write_output "project_repo" "$project_repo"
 write_output "project_ref" "$project_ref"
 write_output "docker_build_family" "$build_family"

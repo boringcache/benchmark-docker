@@ -28,13 +28,14 @@ current pin, then builds `62f89ce78a4a`, `8e71f85c30f2`, `631a702e2ec8`, and
 `e46d77e183ac` in order. The issue-era `3b5d29b75cfa` source remains a separate
 exact control for the published upstream timings.
 
-BoringCache wraps the real Compose command directly:
+The tool-cache follow-up wraps the real Compose command directly:
 
 ```bash
 boringcache docker \
   --workspace boringcache/docker-cache-proof \
   --tag <scope> \
   --cache-mode max \
+  --tool-cache sccache:<scope>-sccache \
   --no-platform \
   --no-git \
   --fail-on-cache-error \
@@ -46,6 +47,20 @@ override. Compose still owns the build, container lifecycle, health checks, and
 local images; the proof does not translate MAE's project into a maintained Bake
 file or add cache settings to its source.
 
+The follow-up copies MAE's pinned upstream Dockerfile into a benchmark overlay
+and changes only the Rust cache plumbing: it installs pinned `sccache` 0.14.0,
+receives the Docker tool-cache environment through a BuildKit secret, sets
+`RUSTC_WRAPPER=sccache`, and puts `/mae/target` on a named BuildKit cache mount.
+This is the Docker-native path. `boringcache cargo` cannot wrap these Cargo
+processes because they execute inside Docker build steps.
+
+The containers series also enables BoringCache's BuildKit cache-mount offload.
+The collab and headless Compose files expand one Docker build into five and
+three build targets respectively. The current canary resolved those targets
+and applied sccache, but emitted no cache-mount lifecycle plan, so their clean
+series measures Docker layer cache plus sccache without claiming target-mount
+offload.
+
 The two `up --wait` cases preserve MAE's Makefile success contract: Compose may
 return nonzero when the one-shot `verifier` service stops, so the harness accepts
 that result only when the verifier's recorded exit code is zero. Other lifecycle
@@ -54,8 +69,9 @@ artifact.
 
 ## Result
 
-The Compose integration passed all three upstream workflows, but this is not an
-outbound-ready cache win for MAE's current commit pattern.
+The original proof used BoringCache's Docker layer cache only. It was not held
+back by general service or CLI instability; it cached at the wrong level for
+MAE's recent changes.
 
 On the exact issue revision, the three upstream Docker steps totaled 35m28s.
 The fresh BoringCache controls totaled 37m33s: 2m05s slower (5.9%). Cold cache
@@ -72,7 +88,20 @@ the final revision reduced the aggregate measured command from 37m46s to 2m54s:
 34m52s less (92.3%). The three replays restored 112 BuildKit steps and still ran
 MAE's real smoke, collaboration, and headless verifier lifecycles.
 
-## Runs
+The Docker tool-cache follow-up changes the rolling result. Its fresh seed took
+39m08s versus 36m52s for the layer-only seed, a 2m16s (6.1%) cold-cache cost.
+Across the next four commits, however, the three jobs fell from 9,033 aggregate
+seconds with layer cache alone to 3,557 seconds with the Docker tool-cache path:
+5,476 seconds saved, or 60.6%.
+
+The two multi-build Compose jobs show why. On every rolling wave, sccache reused
+at least 744 of 767 Rust compile requests (97.0%); the layer-only proof had to
+rebuild the dependency layer. The single-build containers job combined sccache
+with the persistent target mount and averaged 227s instead of 747s (69.7%
+less). Its target archive hydrated successfully on every rolling commit and
+grew from 797 MB after the seed to 1.06 GB after rolling 4.
+
+## Layer-only runs
 
 Each linked value is the measured Compose command, not the complete workflow
 job. `Cached` is the sum of cached BuildKit steps across the three independent
@@ -89,6 +118,22 @@ jobs.
 | Rolling 4 `e46d77e183ac` | [746s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643860582) | [726s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30646189034) | [794s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30646755726) | 2,266s | 13 |
 | Exact warm replay | [18s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644808280) | [73s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647094645) | [83s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647730389) | 174s | 112 |
 
+## Docker tool-cache follow-up
+
+`Rust reuse` is the aggregate Rust sccache hit count across the three jobs. The
+containers job also has BoringCache target-mount offload; collab and headless do
+not, for the multi-target reason above.
+
+| Source | Containers | Collab E2E | Headless E2E | Aggregate | Rust reuse |
+|---|---:|---:|---:|---:|---:|
+| Seed `2d97d3bcd95a` | [781s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30661479797) | [757s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30661479715) | [810s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30661479821) | 2,348s | Fresh |
+| Rolling 1 `62f89ce78a4a` | [148s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662341444) | [238s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662340042) | [299s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662373823) | 685s | 1,555 / 1,557 (99.9%) |
+| Rolling 2 `8e71f85c30f2` | [266s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662549305) | [364s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662642092) | [374s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662737669) | 1,004s | 1,488 / 1,557 (95.6%) |
+| Rolling 3 `631a702e2ec8` | [233s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30662878221) | [304s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663066641) | [368s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663174056) | 905s | 1,530 / 1,557 (98.3%) |
+| Rolling 4 `e46d77e183ac` | [259s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663186983) | [327s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663453206) | [377s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663666957) | 963s | 1,488 / 1,557 (95.6%) |
+| Rolling average | 227s | 308s | 355s | 889s | 97.3% |
+| Exact warm replay | [21s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663970136) | [47s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30663874185) | [93s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30664145015) | 161s | Build steps cached |
+
 ## Evidence
 
 The upstream control is [MAE run 30300856171](https://github.com/cuttlefisch/mae/actions/runs/30300856171).
@@ -97,10 +142,13 @@ All BoringCache evidence is on the
 and every run above publishes its benchmark JSON and BuildKit log as workflow
 artifacts.
 
-The proof pins CLI `vcli-canary-851ae8ac013f` and BuildKit
+Both proof phases pin CLI `vcli-canary-851ae8ac013f` and BuildKit
 `v0.30.0-bc.14@sha256:9b44a5426d7e32db41584c8d7d9f5251b0ad8348427e15849b541418030e7dab`.
-The case files pin every source revision and use separate cache scopes for the
-three Compose projects.
+The tool-cache phase additionally pins sccache 0.14.0. The case files pin every
+source revision and use separate cache scopes for the three Compose projects.
+Every clean-series sccache report recorded zero cache timeouts, read errors,
+write errors, and cache errors. BoringCache's production telemetry independently
+records OCI and sccache reads for the linked runs.
 
 During setup, the headless service hit its own watchdog health timeout twice
 before its verifier could start. The cache operation completed normally; the
@@ -110,14 +158,14 @@ and [run 30640450349](https://github.com/boringcache/docker-cache-proofs/actions
 
 ## What this would mean for MAE
 
-This is a product-path validation, but not outbound-ready guidance today. MAE
-could wrap its existing commands with the CLI without restructuring the
-Dockerfile or committing cache backend configuration to the Compose files. The
-fully warm result proves that path can remove almost all build work.
+MAE is a credible Docker tool-cache prospect. The follow-up directly answers
+the manifest-invalidation problem that defeated the layer-only proof, preserves
+the upstream Compose lifecycle, and shows repeatable 55.9% to 69.7% per-job
+rolling savings across four real commits.
 
-The recent rolling history is the blocker: every tested commit invalidated the
-dependency layer, and the four waves stayed near cold-build time. The next
-useful experiment would be a longer commit window containing ordinary source
-changes that leave Cargo manifests and `Cargo.lock` untouched. Until that shows
-repeatable rolling savings, the honest result is Compose compatibility rather
-than a MAE cache recommendation.
+The honest recommendation is narrower than “turn on every cache.” MAE would
+need the small Dockerfile integration in this proof and should use
+`boringcache docker --tool-cache sccache:<scope>` for all three jobs. Target-mount
+offload is also proven for the single-build containers path, but should not yet
+be promised for the unchanged collab and headless files: the canary still needs
+to deduplicate or otherwise plan their repeated Compose build targets.

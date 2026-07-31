@@ -63,15 +63,53 @@ Run the ordered pair with an isolated scope and no image output:
   --rolling-bootstrap-ref seed \
   --lane-filter all \
   --build-output none \
-  --cache-scope-suffix tiled-rolling-1 \
+  --cache-scope-suffix tiled-rolling-2 \
   --skip-fresh
 ```
+
+The earlier `tiled-rolling-1` attempt was cancelled after a duplicate manual
+dispatch made the helper follow the wrong seed run. It is excluded from the
+result. The workflow and helper now attach a unique dispatch token to every run
+name, and the controlled series below uses the fresh `tiled-rolling-2` scope.
 
 The two lanes use the same source, upstream `Containerfile`, QEMU setup,
 `TILED_VERSION` build argument, two target platforms, provenance setting, and
 GitHub-hosted runner class. GitHub Actions Cache uses `type=gha,mode=max`;
 BoringCache uses its CLI-managed native BuildKit cache backend. Neither lane
 pushes an image.
+
+## Result
+
+The post-fix backend comparison is decisive. On `rolling4`, after the
+Dockerfile ordering fix had already landed, the complete measured phase took
+98 seconds with BoringCache versus 258 seconds with GHA, a 62% reduction. The
+underlying build commands were 98 versus 250 seconds. GHA spent 59.3 seconds
+preparing its cache export; BoringCache's finalizer took 0.1 seconds.
+
+An unchanged replay of the same revision took 7 seconds with BoringCache and
+19 seconds with GHA (12 seconds for GHA's build command plus its builder
+setup). Both backends are fast when every input is hot; the important result is
+the first post-fix build after a real source transition.
+
+| Source | BoringCache measured phase | GHA measured phase | GHA cache preparation |
+|---|---:|---:|---:|
+| `1853c2a1` isolated cold seed | [372s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643182520) | [646s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643182520) | 235.7s |
+| `1d2b1c53` pre-fix transition | [356s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644066394) | [662s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644066394) | 187.4s |
+| `d642062a` pre-fix transition | [329s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644951880) | [827s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644951880) | 197.1s |
+| `d7b26041` Dockerfile-fix transition | [358s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30646060165) | [910s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30646060165) | 209.3s |
+| `14a4368c` post-fix transition | [98s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647192034) | [258s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647192034) | 59.3s |
+| Unchanged `14a4368c` replay | [7s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647624528) | [19s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30647624528) | 0.7s |
+
+Each measured phase includes cache import/export and, for GHA, its per-job
+builder setup. These are ordered transition samples, not repeated statistical
+trials. The cancelled `tiled-rolling-1` run is excluded.
+
+BoringCache served 111 of 112 cache objects on the post-fix transition.
+Internal telemetry nevertheless flagged elevated object-storage first-byte
+latency on both the Dockerfile-fix and post-fix runs. That is an operator issue
+to investigate, but it did not create the win: the post-fix solve still spent
+27 seconds in the ARM application dependency step, while the backend avoided
+GHA's separate cache-preparation tail.
 
 ## Adoption boundary
 

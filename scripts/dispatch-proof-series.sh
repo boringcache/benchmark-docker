@@ -17,6 +17,8 @@ wait_for_runs="true"
 dry_run="false"
 warm_replay="false"
 watch_interval_seconds="${GH_RUN_WATCH_INTERVAL_SECONDS:-60}"
+rust_target_cache="false"
+compare_rust_target="false"
 rolling_refs=()
 
 usage() {
@@ -38,9 +40,11 @@ Options:
   --rolling-bootstrap-ref REF_KEY Ref key for rolling bootstrap (default: main)
   --rolling-ref REF_KEY           Add one rolling ref key; repeatable
   --rolling-refs A,B,C            Add comma-separated rolling ref keys
-  --build-output MODE             none, load, or local-registry (default: none)
-  --lane-filter FILTER            all, buildkit, or gha-buildkit (default: all)
+  --build-output MODE             none, load, local-registry, or ghcr (default: none)
+  --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
+  --rust-target-cache             Offload and measure the case's declared Cargo target cache mount
+  --compare-rust-target           Run each selected phase once without and once with target offload
   --warm-replay                   Replay the last rolling ref once after the commit series
   --skip-fresh                    Do not dispatch the fresh lane
   --skip-rolling                  Do not dispatch rolling lanes
@@ -106,6 +110,14 @@ while [[ $# -gt 0 ]]; do
       cache_scope_suffix="$2"
       shift 2
       ;;
+    --rust-target-cache)
+      rust_target_cache="true"
+      shift
+      ;;
+    --compare-rust-target)
+      compare_rust_target="true"
+      shift
+      ;;
     --warm-replay)
       warm_replay="true"
       shift
@@ -149,7 +161,7 @@ if [[ -z "$case_id" ]]; then
 fi
 
 case "$build_output" in
-  none | load | local-registry)
+  none | load | local-registry | ghcr)
     ;;
   *)
     echo "Unsupported build output: $build_output" >&2
@@ -158,7 +170,7 @@ case "$build_output" in
 esac
 
 case "$lane_filter" in
-  all | buildkit | gha-buildkit)
+  all | buildkit | gha-buildkit | registry-buildkit)
     ;;
   *)
     echo "Unsupported lane filter: $lane_filter" >&2
@@ -217,6 +229,9 @@ wait_for_run() {
     )"
     if [[ -n "$run_id" ]]; then
       echo "$run_url"
+      # A Docker proof can run for well over ten minutes. The gh default polls
+      # every three seconds, which can exhaust the authenticated REST quota
+      # during a multi-commit series.
       gh run watch "$run_id" --repo "$repo" --exit-status --interval "$watch_interval_seconds"
       return 0
     fi
@@ -230,7 +245,16 @@ wait_for_run() {
 dispatch_one() {
   local ref_key="$1"
   local lane="$2"
-  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output}"
+  local target_cache="$3"
+  local target_label="off"
+  if [[ "$target_cache" == "true" ]]; then
+    target_label="on"
+  fi
+  local effective_lane_filter="$lane_filter"
+  if [[ "$compare_rust_target" == "true" && "$target_cache" == "true" && "$lane_filter" == "all" ]]; then
+    effective_lane_filter="buildkit"
+  fi
+  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output} | rust-target=${target_label}"
   local started_at=""
   started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -242,8 +266,9 @@ dispatch_one() {
     -f "ref_key=${ref_key}"
     -f "cache_lane=${lane}"
     -f "build_output=${build_output}"
-    -f "lane_filter=${lane_filter}"
+    -f "lane_filter=${effective_lane_filter}"
     -f "cache_scope_suffix=${cache_scope_suffix}"
+    -f "rust_target_cache=${target_cache}"
   )
 
   printf 'Dispatching:'
@@ -261,19 +286,30 @@ dispatch_one() {
   fi
 }
 
+dispatch_variants() {
+  local ref_key="$1"
+  local lane="$2"
+  if [[ "$compare_rust_target" == "true" ]]; then
+    dispatch_one "$ref_key" "$lane" false
+    dispatch_one "$ref_key" "$lane" true
+  else
+    dispatch_one "$ref_key" "$lane" "$rust_target_cache"
+  fi
+}
+
 if [[ "$run_fresh" == "true" ]]; then
-  dispatch_one "$fresh_ref" fresh
+  dispatch_variants "$fresh_ref" fresh
 fi
 
 if [[ "$run_rolling" == "true" ]]; then
   if [[ "$include_rolling_bootstrap" == "true" ]]; then
-    dispatch_one "$rolling_bootstrap_ref" rolling
+    dispatch_variants "$rolling_bootstrap_ref" rolling
   fi
   for ref_key in "${rolling_refs[@]}"; do
-    dispatch_one "$ref_key" rolling
+    dispatch_variants "$ref_key" rolling
   done
   if [[ "$warm_replay" == "true" && "${#rolling_refs[@]}" -gt 0 ]]; then
     last_rolling_index=$((${#rolling_refs[@]} - 1))
-    dispatch_one "${rolling_refs[$last_rolling_index]}" rolling
+    dispatch_variants "${rolling_refs[$last_rolling_index]}" rolling
   fi
 fi

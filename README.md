@@ -18,9 +18,68 @@ Docker cases compare:
 
 Fresh runs seed an isolated cache from the pinned source. Rolling runs build a later pinned revision against the same stable cache scope.
 
-BoringCache has one Docker cache product path in these proofs. The CLI owns the
-builder and emits the native `type=boringcache` cache configuration; registry
-cache and alternate-backend benchmark lanes have been retired.
+Rust cases that declare a Cargo target cache mount can also run a paired target
+proof. The ordinary BoringCache lane remains the product control. The target
+lane enables the managed BuildKit cache-mount offloader, keeps an independent
+cache scope, and records the target archive's compressed bytes, logical bytes,
+file count, and rolling growth. Iggy, Wormhole, and Proteus currently expose
+this proof; other cases fail early rather than silently running without target
+evidence.
+
+### Proteus multi-arch Rust proof
+
+The `proteus-controller-multiarch` case starts from the exact commit in
+[CraftingTech/proteus#45](https://github.com/CraftingTech/proteus/issues/45).
+That upstream run pushed both image tags, then failed after 4h36 when its
+`type=gha,mode=max` cache export returned `not_found`.
+
+The proof keeps the distroless runtime and the original amd64 + arm64 output,
+but replaces emulation with parallel native GitHub-hosted runners:
+
+- amd64 runs on `ubuntu-24.04` and arm64 runs on `ubuntu-24.04-arm`;
+- each native lane builds and pushes one architecture-specific image, after
+  which the final job joins those tags into one manifest;
+- BoringCache's managed BuildKit backend owns the ordinary OCI layer cache;
+- `--tool-cache sccache` reuses compiler outputs for the Dioxus CLI and both
+  native controller builds, while only Dioxus's workspace wrapper stays outside
+  sccache; and
+- the target variant offloads the UI and per-architecture controller
+  `/src/target` cache mounts and records their compressed bytes, logical bytes,
+  file counts, and growth; Cargo registry/git state stays in ordinary Docker
+  layers so the target evidence contains only the two caches being claimed.
+
+Run the native amd64 + arm64 BoringCache matrix and its additional target-mount
+lane. Each job pushes its architecture image to GHCR, then a final job publishes
+their shared multi-arch manifest:
+
+```sh
+./scripts/dispatch-proof-series.sh \
+  --case proteus-controller-multiarch \
+  --build-output ghcr \
+  --compare-rust-target \
+  --warm-replay
+```
+
+Run an ordered pure-versus-target series with:
+
+```sh
+./scripts/dispatch-proof-series.sh \
+  --case iggy-rust-server \
+  --compare-rust-target
+```
+
+The target state is only a performance input. Builds must still be correct from
+an empty mount because BuildKit may garbage-collect native cache mounts.
+GitHub's `type=gha` exporter does not preserve cache-mount contents, so the
+ordinary GHA lane runs once as the external-cache control; the target variant
+adds only the isolated BoringCache offload lane.
+
+Some cases also compare against a GHCR registry cache. These runs use one stable
+tag and record the export time and package versions left behind when the tag is
+replaced.
+
+GHCR is only a comparison. BoringCache always uses its normal product path: the
+CLI manages the builder and uses the native `type=boringcache` exporter.
 
 ## Prospect Reports
 

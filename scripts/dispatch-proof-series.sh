@@ -220,7 +220,7 @@ wait_for_run() {
       gh run watch "$run_id" --repo "$repo" --exit-status --interval "$watch_interval_seconds"
       return 0
     fi
-    sleep 5
+    sleep "$watch_interval_seconds"
   done
 
   echo "Could not find dispatched run for ${title_prefix}" >&2

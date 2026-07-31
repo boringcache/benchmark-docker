@@ -38,7 +38,7 @@ Options:
   --rolling-ref REF_KEY           Add one rolling ref key; repeatable
   --rolling-refs A,B,C            Add comma-separated rolling ref keys
   --build-output MODE             none, load, or local-registry (default: none)
-  --lane-filter FILTER            all, buildkit, or gha-buildkit (default: all)
+  --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
   --warm-replay                   Replay the last rolling ref once after the commit series
   --skip-fresh                    Do not dispatch the fresh lane
@@ -157,7 +157,7 @@ case "$build_output" in
 esac
 
 case "$lane_filter" in
-  all | buildkit | gha-buildkit)
+  all | buildkit | gha-buildkit | registry-buildkit)
     ;;
   *)
     echo "Unsupported lane filter: $lane_filter" >&2

@@ -16,6 +16,8 @@ include_rolling_bootstrap="true"
 wait_for_runs="true"
 dry_run="false"
 warm_replay="false"
+rust_target_cache="false"
+compare_rust_target="false"
 rolling_refs=()
 
 usage() {
@@ -40,6 +42,8 @@ Options:
   --build-output MODE             none, load, or local-registry (default: none)
   --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
+  --rust-target-cache             Offload and measure the case's declared Cargo target cache mount
+  --compare-rust-target           Run each selected phase once without and once with target offload
   --warm-replay                   Replay the last rolling ref once after the commit series
   --skip-fresh                    Do not dispatch the fresh lane
   --skip-rolling                  Do not dispatch rolling lanes
@@ -104,6 +108,14 @@ while [[ $# -gt 0 ]]; do
     --cache-scope-suffix)
       cache_scope_suffix="$2"
       shift 2
+      ;;
+    --rust-target-cache)
+      rust_target_cache="true"
+      shift
+      ;;
+    --compare-rust-target)
+      compare_rust_target="true"
+      shift
       ;;
     --warm-replay)
       warm_replay="true"
@@ -232,7 +244,16 @@ wait_for_run() {
 dispatch_one() {
   local ref_key="$1"
   local lane="$2"
-  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output}"
+  local target_cache="$3"
+  local target_label="off"
+  if [[ "$target_cache" == "true" ]]; then
+    target_label="on"
+  fi
+  local effective_lane_filter="$lane_filter"
+  if [[ "$compare_rust_target" == "true" && "$target_cache" == "true" && "$lane_filter" == "all" ]]; then
+    effective_lane_filter="buildkit"
+  fi
+  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output} | rust-target=${target_label}"
   local started_at=""
   started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -244,8 +265,9 @@ dispatch_one() {
     -f "ref_key=${ref_key}"
     -f "cache_lane=${lane}"
     -f "build_output=${build_output}"
-    -f "lane_filter=${lane_filter}"
+    -f "lane_filter=${effective_lane_filter}"
     -f "cache_scope_suffix=${cache_scope_suffix}"
+    -f "rust_target_cache=${target_cache}"
   )
 
   printf 'Dispatching:'
@@ -263,19 +285,30 @@ dispatch_one() {
   fi
 }
 
+dispatch_variants() {
+  local ref_key="$1"
+  local lane="$2"
+  if [[ "$compare_rust_target" == "true" ]]; then
+    dispatch_one "$ref_key" "$lane" false
+    dispatch_one "$ref_key" "$lane" true
+  else
+    dispatch_one "$ref_key" "$lane" "$rust_target_cache"
+  fi
+}
+
 if [[ "$run_fresh" == "true" ]]; then
-  dispatch_one "$fresh_ref" fresh
+  dispatch_variants "$fresh_ref" fresh
 fi
 
 if [[ "$run_rolling" == "true" ]]; then
   if [[ "$include_rolling_bootstrap" == "true" ]]; then
-    dispatch_one "$rolling_bootstrap_ref" rolling
+    dispatch_variants "$rolling_bootstrap_ref" rolling
   fi
   for ref_key in "${rolling_refs[@]}"; do
-    dispatch_one "$ref_key" rolling
+    dispatch_variants "$ref_key" rolling
   done
   if [[ "$warm_replay" == "true" && "${#rolling_refs[@]}" -gt 0 ]]; then
     last_rolling_index=$((${#rolling_refs[@]} - 1))
-    dispatch_one "${rolling_refs[$last_rolling_index]}" rolling
+    dispatch_variants "${rolling_refs[$last_rolling_index]}" rolling
   fi
 fi

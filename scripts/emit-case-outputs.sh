@@ -28,7 +28,8 @@ write_output() {
 write_multiline_output() {
   local key="$1"
   local value="$2"
-  local delimiter="case_${key}_$(date +%s%N)"
+  local delimiter
+  delimiter="case_${key}_$(date +%s%N)"
   {
     echo "${key}<<${delimiter}"
     printf '%s\n' "$value"
@@ -58,6 +59,8 @@ cli_platform="$(jq -r '.workflow.cli_platform // "linux-amd64"' "$case_file")"
 free_disk_space="$(jq -r '.workflow.free_disk_space // false' "$case_file")"
 setup_qemu="$(jq -r '.workflow.setup_qemu // false' "$case_file")"
 docker_tool_cache="$(jq -r '.docker.tool_cache // ""' "$case_file")"
+rust_target_cache_kind="$(jq -r '.docker.rust_target_cache.kind // ""' "$case_file")"
+rust_target_cache_id_pattern="$(jq -r '.docker.rust_target_cache.id_pattern // ""' "$case_file")"
 source_path=".work/${case_id}/source"
 image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
@@ -94,4 +97,6 @@ write_output "cli_platform" "$cli_platform"
 write_output "free_disk_space" "$free_disk_space"
 write_output "setup_qemu" "$setup_qemu"
 write_multiline_output "docker_tool_cache" "$docker_tool_cache"
+write_output "rust_target_cache_kind" "$rust_target_cache_kind"
+write_output "rust_target_cache_id_pattern" "$rust_target_cache_id_pattern"
 write_multiline_output "docker_build_extra_args" "$extra_args"

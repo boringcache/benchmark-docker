@@ -1,6 +1,6 @@
 name: Docker Benchmark
 run-name: >-
-  ${{ format('{0} | {1} | {2} | output={3}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output) }}
+  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off') }}
 
 on:
   workflow_dispatch:
@@ -81,6 +81,11 @@ on:
         required: false
         type: string
         default: ""
+      rust_target_cache:
+        description: Offload Dockerfile Cargo target cache mounts for the declared Rust cases.
+        required: false
+        type: boolean
+        default: false
       lane_filter:
         description: Run the proof pair or only BoringCache.
         required: true
@@ -113,14 +118,27 @@ jobs:
       setup_qemu: ${{ steps.case.outputs.setup_qemu }}
       docker_build_extra_args: ${{ steps.case.outputs.docker_build_extra_args }}
       docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
+      rust_target_cache_kind: ${{ steps.case.outputs.rust_target_cache_kind }}
+      rust_target_cache_id_pattern: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
     steps:
       - uses: actions/checkout@v6
       - id: case
         run: ./scripts/emit-case-outputs.sh "${{ inputs.case_id }}" "${{ inputs.ref_key }}" "${{ inputs.build_output }}"
+      - name: Require a declared Rust target cache mount
+        if: ${{ inputs.rust_target_cache }}
+        env:
+          TARGET_CACHE_KIND: ${{ steps.case.outputs.rust_target_cache_kind }}
+          TARGET_CACHE_PATTERN: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
+        run: |
+          [[ "$TARGET_CACHE_KIND" == "buildkit-cache-mount" ]] || {
+            echo "${{ inputs.case_id }} does not declare a BuildKit Rust target cache mount" >&2
+            exit 1
+          }
+          [[ -n "$TARGET_CACHE_PATTERN" ]]
 
   github-actions-cache:
     name: GHA
-    if: ${{ inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit' }}
+    if: ${{ !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -130,7 +148,7 @@ jobs:
       PROJECT_REF: ${{ needs.case.outputs.project_ref }}
       CASE_ID: ${{ needs.case.outputs.case_id }}
       CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ needs.case.outputs.benchmark_id }}-gha
+      BENCHMARK_ID: ${{ format('{0}{1}-gha', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
       CACHE_ID: ${{ needs.case.outputs.cache_id }}
       CACHE_LANE: ${{ inputs.cache_lane }}
       CACHE_SCOPE_SUFFIX: -${{ needs.case.outputs.case_id }}
@@ -149,9 +167,9 @@ jobs:
         with:
           strategy: actions-cache
           cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ needs.case.outputs.benchmark_id }}-gha
+          benchmark_id: ${{ format('{0}{1}-gha', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
           cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
@@ -235,7 +253,7 @@ jobs:
       PROJECT_REF: ${{ needs.case.outputs.project_ref }}
       CASE_ID: ${{ needs.case.outputs.case_id }}
       CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ needs.case.outputs.benchmark_id }}-bc
+      BENCHMARK_ID: ${{ format('{0}{1}-bc', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
       CACHE_ID: ${{ needs.case.outputs.cache_id }}
       BENCHMARK_WORKSPACE: boringcache/docker-cache-proof
       CACHE_LANE: ${{ inputs.cache_lane }}
@@ -255,9 +273,9 @@ jobs:
         with:
           strategy: boringcache
           cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ needs.case.outputs.benchmark_id }}-bc
+          benchmark_id: ${{ format('{0}{1}-bc', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
           cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
@@ -267,6 +285,8 @@ jobs:
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
           docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          rust_target_cache: ${{ inputs.rust_target_cache && 'true' || 'false' }}
+          rust_target_cache_id_pattern: ${{ needs.case.outputs.rust_target_cache_id_pattern }}
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}

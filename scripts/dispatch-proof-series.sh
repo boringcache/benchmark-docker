@@ -216,7 +216,10 @@ wait_for_run() {
     )"
     if [[ -n "$run_id" ]]; then
       echo "$run_url"
-      gh run watch "$run_id" --repo "$repo" --exit-status
+      # A Docker proof can run for well over ten minutes. The gh default polls
+      # every three seconds, which can exhaust the authenticated REST quota
+      # during a multi-commit series.
+      gh run watch "$run_id" --repo "$repo" --exit-status --interval 30
       return 0
     fi
     sleep 5

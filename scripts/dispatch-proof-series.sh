@@ -16,6 +16,7 @@ include_rolling_bootstrap="true"
 wait_for_runs="true"
 dry_run="false"
 warm_replay="false"
+watch_interval_seconds="${GH_RUN_WATCH_INTERVAL_SECONDS:-60}"
 rolling_refs=()
 
 usage() {
@@ -216,7 +217,7 @@ wait_for_run() {
     )"
     if [[ -n "$run_id" ]]; then
       echo "$run_url"
-      gh run watch "$run_id" --repo "$repo" --exit-status
+      gh run watch "$run_id" --repo "$repo" --exit-status --interval "$watch_interval_seconds"
       return 0
     fi
     sleep 5

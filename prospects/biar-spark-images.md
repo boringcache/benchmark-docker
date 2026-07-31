@@ -42,14 +42,19 @@ repository-wide GHA cache allowance?
 
 ## What this proof tests
 
-The three case manifests pin the same BIAR source commit and retain its original
-Dockerfiles, build contexts, `linux/amd64` platform, and separate per-image
-cache identities.
+The three case manifests retain BIAR's original Dockerfiles, build contexts,
+`linux/amd64` platform, and separate per-image cache identities.
 
-For each image, the proof runs:
+The exact-replay check runs the current pinned source twice:
 
 1. a cold rolling build that seeds a new BoringCache scope;
 2. an unchanged replay that restores and republishes that scope.
+
+The rolling check starts four context-changing commits back and advances
+through four later commits. Each case follows its own linear ancestry so every
+step changes files inside that image's Docker build context. The final commit
+changes the Spark download instruction in all three Dockerfiles, deliberately
+testing a layer-invalidating change after three ordinary source changes.
 
 The build output is `none`. That isolates layer-cache import, execution, and
 export from Docker Hub image-push time, so these results must not be presented
@@ -57,7 +62,9 @@ as an end-to-end replacement for BIAR's publish-job durations.
 
 ## Run it
 
-Use a new suffix for every series so an older cache cannot seed the cold run:
+Use a new suffix for every series so an older cache cannot seed the cold run.
+This runs the cold seed plus four rolling commits for both BoringCache and the
+GHA `mode=max` control:
 
 ```bash
 for case_id in \
@@ -68,10 +75,9 @@ do
   ./scripts/dispatch-proof-series.sh \
     --case "$case_id" \
     --ref main \
-    --rolling-bootstrap-ref main \
-    --rolling-ref main \
-    --lane-filter buildkit \
-    --cache-scope-suffix biar-rerun-1 \
+    --rolling-bootstrap-ref seed \
+    --lane-filter all \
+    --cache-scope-suffix biar-rolling-rerun-1 \
     --skip-fresh
 done
 ```

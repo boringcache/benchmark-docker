@@ -2,8 +2,8 @@
 
 ARG RUST_VERSION=1.91
 
-# The Dioxus output is WASM and static assets, so build it once on the native
-# runner instead of installing the CLI and compiling it again under QEMU.
+# Each architecture is built on its matching native runner. The Dioxus output
+# remains a build-platform artifact copied into the controller stage.
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-bookworm AS ui
 WORKDIR /src
 ARG BUILDARCH
@@ -87,23 +87,19 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY --from=ui /src/crates/proteus-ui/dist ./crates/proteus-ui/dist
 
-# Keep sccache on native controller builds; the target mount caches emulated builds.
+# Each matrix lane is native, so both controller architectures can use sccache.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/src/target,id=proteus-target-controller-${TARGETARCH},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
-    if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
-      export RUSTC_WRAPPER=sccache; \
-      sccache --zero-stats >/dev/null 2>&1 || true; \
-      cargo build --release -p proteus-controller; \
-      echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
-      sccache --show-stats; \
-      echo END_BORINGCACHE_SCCACHE_STATS; \
-    else \
-      RUSTC_WRAPPER= CC=cc CXX=c++ cargo build --release -p proteus-controller; \
-    fi; \
+    export RUSTC_WRAPPER=sccache; \
+    sccache --zero-stats >/dev/null 2>&1 || true; \
+    cargo build --release -p proteus-controller; \
+    echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
+    sccache --show-stats; \
+    echo END_BORINGCACHE_SCCACHE_STATS; \
     cp target/release/proteus-controller /src/proteus-controller; \
     test -x /src/proteus-controller
 

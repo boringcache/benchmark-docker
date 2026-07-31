@@ -34,20 +34,21 @@ That upstream run pushed both image tags, then failed after 4h36 when its
 `type=gha,mode=max` cache export returned `not_found`.
 
 The proof keeps the distroless runtime and the original amd64 + arm64 output,
-while making each cache boundary visible:
+but replaces emulation with parallel native GitHub-hosted runners:
 
-- the architecture-independent Dioxus WASM build runs once on the native build
-  platform instead of reinstalling and rebuilding under QEMU;
+- amd64 runs on `ubuntu-24.04` and arm64 runs on `ubuntu-24.04-arm`;
+- each native lane builds and pushes one architecture-specific image, after
+  which the production workflow can join their digests into one manifest;
 - BoringCache's managed BuildKit backend owns the ordinary OCI layer cache;
-- `--tool-cache sccache` reuses compiler outputs for the native Dioxus CLI and
-  controller builds, while Dioxus's workspace wrapper and the QEMU build stay
-  outside sccache; and
+- `--tool-cache sccache` reuses compiler outputs for the Dioxus CLI and both
+  native controller builds, while only Dioxus's workspace wrapper stays outside
+  sccache; and
 - the target variant offloads the UI and per-architecture controller
   `/src/target` cache mounts and records their compressed bytes, logical bytes,
-  file counts, and growth, including the expensive emulated controller target.
+  file counts, and growth.
 
-Run the original GHA control, the ordinary BoringCache lane, and the additional
-target-mount lane against a local multi-platform registry push with:
+Run the native amd64 + arm64 BoringCache matrix and its additional target-mount
+lane against per-runner local registry pushes with:
 
 ```sh
 ./scripts/dispatch-proof-series.sh \

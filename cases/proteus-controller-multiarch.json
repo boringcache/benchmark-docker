@@ -5,7 +5,7 @@
     "repo": "CraftingTech/proteus",
     "pain_url": "https://github.com/CraftingTech/proteus/issues/45",
     "evidence_run": "https://github.com/CraftingTech/proteus/actions/runs/30160511674",
-    "runner": "GitHub-hosted ubuntu-24.04"
+    "runner": "GitHub-hosted native amd64 + arm64 matrix"
   },
   "refs": {
     "main": "71ac73a73c99bdc97fa88878ffc9474d589fa668",
@@ -18,7 +18,6 @@
     "dockerfile": "deploy/Dockerfile.boringcache-proof",
     "overlay_dockerfile": "overlays/proteus-controller-multiarch/Dockerfile",
     "image": "proteus-controller-multiarch",
-    "platform": "linux/amd64,linux/arm64",
     "rust_target_cache": {
       "kind": "buildkit-cache-mount",
       "id_pattern": "^/?proteus-target-"
@@ -29,6 +28,22 @@
   "workflow": {
     "runner_label": "ubuntu-24.04",
     "free_disk_space": true,
-    "setup_qemu": true
+    "setup_qemu": false,
+    "native_matrix": {
+      "include": [
+        {
+          "arch": "amd64",
+          "platform": "linux/amd64",
+          "runner_label": "ubuntu-24.04",
+          "cli_platform": "linux-amd64"
+        },
+        {
+          "arch": "arm64",
+          "platform": "linux/arm64",
+          "runner_label": "ubuntu-24.04-arm",
+          "cli_platform": "linux-arm64"
+        }
+      ]
+    }
   }
 }

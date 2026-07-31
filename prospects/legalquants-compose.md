@@ -99,6 +99,31 @@ The CLI resolves the existing Compose services and adds a temporary cache
 override with independent service tags. It does not edit lq-ai's Compose file,
 change its Dockerfiles, or translate the build into a maintained Bake file.
 
+## Result
+
+The gateway/web component is a strong proof. Its five changed-checkpoint
+commands had a 98-second median, 72% below the 349-second cold seed, and the
+unchanged current replay took 85 seconds. The API component is not a material
+end-to-end win: its changed-checkpoint median was 118 seconds versus a
+121-second cold seed, and the unchanged replay took 99 seconds. The API cache
+served its layers, but Compose still had to materialize the large local image;
+on the replay, that export alone took 88 seconds.
+
+| Source | Gateway + web Compose command | API Compose command |
+|---|---:|---:|
+| `8179c8af` cold seed | [349s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642559586) | [121s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642568054) |
+| `d9760abf` | [98s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643055166) | [79s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642770566) |
+| `8edd043e` | [119s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643260404) | [95s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642934764) |
+| `ea9b6e76` | [126s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643473648) | [126s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643130525) |
+| `1d7f9f30` | [81s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643670914) | [124s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643339020) |
+| `b060ae2f` | [84s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643828409) | [118s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643541567) |
+| Unchanged `b060ae2f` replay | [85s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643991982) | [99s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643738123) |
+
+Each number is the complete measured Compose command, including cache
+import/export and image materialization. The two columns are separate jobs and
+must not be summed into a synthetic stack-smoke measurement. These are ordered
+checkpoint samples, not repeated statistical trials.
+
 ## Credential boundary
 
 The appropriate first adoption target is trusted `main` or a manual internal

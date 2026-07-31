@@ -16,6 +16,7 @@ cache_promotion_refs="${BORINGCACHE_DOCKER_PROMOTION_REFS:-}"
 allow_rolling_bootstrap="${ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP:-false}"
 build_output="${BENCHMARK_BUILD_OUTPUT:-none}"
 docker_tool_cache="${DOCKER_TOOL_CACHE:-}"
+docker_build_family="${DOCKER_BUILD_FAMILY:-buildx-build}"
 export BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS="${BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS:-1}"
 cleanup() { :; }
 trap cleanup EXIT
@@ -342,9 +343,16 @@ run_wrapped_boringcache_build() {
   done
 
   : > "$build_log"
+  local docker_command=(docker buildx build)
+  if [[ "$docker_build_family" == "classic-build" ]]; then
+    docker_command=(docker build)
+  elif [[ "$docker_build_family" != "buildx-build" ]]; then
+    echo "Unknown DOCKER_BUILD_FAMILY: ${docker_build_family}" >&2
+    exit 1
+  fi
   set +e
   DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- \
-    docker buildx build \
+    "${docker_command[@]}" \
     --file "$DOCKERFILE_PATH" \
     --tag "$IMAGE_TAG" \
     --progress=plain \

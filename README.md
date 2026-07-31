@@ -83,6 +83,9 @@ CLI manages the builder and uses the native `type=boringcache` exporter.
 
 ## Prospect Reports
 
+- [MediSwarm classic Docker cache proof](prospects/mediswarm-classic-build.md)
+  tests ODELIA and STAMP as separate remote caches across builder pruning and
+  five consecutive upstream source transitions.
 - [Grafana Cloud Cost Exporter Docker and Go cache proof](prospects/cloudcost-exporter.md)
   compares GitHub Actions Cache, BoringCache Docker, and BoringCache Docker + Go
   across five consecutive upstream source transitions.

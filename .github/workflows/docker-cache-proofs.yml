@@ -11,6 +11,8 @@ on:
         type: choice
         options:
           - blockscout-frontend
+          - mediswarm-odelia
+          - mediswarm-stamp
           - phentrieve-api
           - wormhole-solana
           - cardstack-realm-server
@@ -112,12 +114,14 @@ jobs:
       cache_id: ${{ steps.case.outputs.cache_id }}
       project_repo: ${{ steps.case.outputs.project_repo }}
       project_ref: ${{ steps.case.outputs.project_ref }}
+      docker_build_family: ${{ steps.case.outputs.docker_build_family }}
       dockerfile_path: ${{ steps.case.outputs.dockerfile_path }}
       docker_context: ${{ steps.case.outputs.docker_context }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
       free_disk_space: ${{ steps.case.outputs.free_disk_space }}
+      prune_builder: ${{ steps.case.outputs.prune_builder }}
       setup_qemu: ${{ steps.case.outputs.setup_qemu }}
       docker_build_extra_args: ${{ steps.case.outputs.docker_build_extra_args }}
       docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
@@ -143,7 +147,7 @@ jobs:
 
   github-actions-cache:
     name: GHA
-    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -179,6 +183,7 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
           project_ref: ${{ needs.case.outputs.project_ref }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_tag: ${{ needs.case.outputs.image_tag }}
@@ -187,11 +192,12 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
 
   registry-cache:
     name: GHCR
-    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -229,6 +235,7 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
           project_ref: ${{ needs.case.outputs.project_ref }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_tag: ${{ needs.case.outputs.image_tag }}
@@ -237,6 +244,7 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
           registry_cache_ref: ghcr.io/${{ github.repository_owner }}/docker-cache-proof-${{ needs.case.outputs.case_id }}
@@ -286,6 +294,7 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
           project_ref: ${{ needs.case.outputs.project_ref }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_tag: ${{ needs.case.outputs.image_tag }}
@@ -297,6 +306,7 @@ jobs:
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
 
@@ -348,6 +358,7 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
           project_ref: ${{ needs.case.outputs.project_ref }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_tag: ${{ format('{0}-{1}', needs.case.outputs.image_tag, matrix.arch) }}
@@ -361,6 +372,7 @@ jobs:
           runner_label: ${{ matrix.runner_label }}
           cli_platform: ${{ matrix.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: 'false'
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
 

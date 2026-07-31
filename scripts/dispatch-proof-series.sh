@@ -10,6 +10,8 @@ rolling_bootstrap_ref="main"
 build_output="none"
 lane_filter="all"
 cache_scope_suffix=""
+cli_version=""
+buildkit_image=""
 run_fresh="true"
 run_rolling="true"
 include_rolling_bootstrap="true"
@@ -43,6 +45,8 @@ Options:
   --build-output MODE             none, load, local-registry, or ghcr (default: none)
   --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
+  --cli-version TAG               Exact CLI release or immutable canary tag
+  --buildkit-image IMAGE          Exact managed BuildKit image reference
   --rust-target-cache             Offload and measure the case's declared Cargo target cache mount
   --compare-rust-target           Run each selected phase once without and once with target offload
   --warm-replay                   Replay the last rolling ref once after the commit series
@@ -108,6 +112,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --cache-scope-suffix)
       cache_scope_suffix="$2"
+      shift 2
+      ;;
+    --cli-version)
+      cli_version="$2"
+      shift 2
+      ;;
+    --buildkit-image)
+      buildkit_image="$2"
       shift 2
       ;;
     --rust-target-cache)
@@ -270,6 +282,12 @@ dispatch_one() {
     -f "cache_scope_suffix=${cache_scope_suffix}"
     -f "rust_target_cache=${target_cache}"
   )
+  if [[ -n "$cli_version" ]]; then
+    cmd+=(-f "cli_version=${cli_version}")
+  fi
+  if [[ -n "$buildkit_image" ]]; then
+    cmd+=(-f "buildkit_image=${buildkit_image}")
+  fi
 
   printf 'Dispatching:'
   printf ' %q' "${cmd[@]}"

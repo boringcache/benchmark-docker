@@ -56,6 +56,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registr
 
 FROM rust:${RUST_VERSION}-bookworm AS builder
 WORKDIR /src
+ARG BUILDARCH
 ARG TARGETARCH
 ARG SCCACHE_VERSION=0.16.0
 ARG SCCACHE_SHA256_AMD64=aec995a83ad3dff3d14b6314e08858b7b73d35ca85a5bcf3d3a9ec07dee35588
@@ -86,26 +87,25 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY --from=ui /src/crates/proteus-ui/dist ./crates/proteus-ui/dist
 
-# Let emulated ARM64 compilation fall back if sccache's local connection drops.
+# Keep sccache on native controller builds; the target mount caches emulated builds.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/src/target,id=proteus-target-controller-${TARGETARCH},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
-    export RUSTC_WRAPPER=sccache; \
-    if [ "$TARGETARCH" = arm64 ]; then \
-      export SCCACHE_IGNORE_SERVER_IO_ERROR=1; \
+    if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
+      export RUSTC_WRAPPER=sccache; \
+      sccache --zero-stats >/dev/null 2>&1 || true; \
+      cargo build --release -p proteus-controller; \
+      echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
+      sccache --show-stats; \
+      echo END_BORINGCACHE_SCCACHE_STATS; \
+    else \
+      RUSTC_WRAPPER= CC=cc CXX=c++ cargo build --release -p proteus-controller; \
     fi; \
-    sccache --zero-stats >/dev/null 2>&1 || true; \
-    cargo build --release -p proteus-controller; \
     cp target/release/proteus-controller /src/proteus-controller; \
-    echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
-    if ! sccache --show-stats; then \
-      [ "$TARGETARCH" = arm64 ]; \
-      echo "sccache stats unavailable after ARM64 compiler fallback"; \
-    fi; \
-    echo END_BORINGCACHE_SCCACHE_STATS
+    test -x /src/proteus-controller
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=builder /src/proteus-controller /usr/local/bin/proteus-controller

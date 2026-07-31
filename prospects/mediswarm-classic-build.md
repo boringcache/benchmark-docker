@@ -60,7 +60,7 @@ for case_id in mediswarm-odelia mediswarm-stamp; do
     --lane-filter buildkit \
     --build-output load \
     --cli-version vcli-canary-851ae8ac013f \
-    --cache-scope-suffix mediswarm-rolling-1 \
+    --cache-scope-suffix mediswarm-load-1 \
     --warm-replay \
     --skip-fresh
 done
@@ -68,8 +68,35 @@ done
 
 ## Result
 
-Pending the isolated seed, five changed-commit builds, and unchanged final
-replay for both image tags.
+The remote tags survived every local builder prune, but the complete
+classic-build result is mixed. ODELIA's five changed revisions had a
+271-second median versus a 385-second cold seed, a 30% reduction, but one
+workflow-only transition took 494 seconds. STAMP's changed-revision median was
+222 seconds versus 238 seconds cold, only a 7% reduction. The unchanged final
+replays took 179 and 129 seconds respectively.
+
+| Source | ODELIA classic build + load | STAMP classic build + load |
+|---|---:|---:|
+| [`42112a44`](https://github.com/KatherLab/MediSwarm/commit/42112a44979aacad525e5a26670755c3feba629a) cold seed | [385s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30641893227) | [238s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30641609224) |
+| [`59423f44`](https://github.com/KatherLab/MediSwarm/commit/59423f44c53a6203a8e91057e7cf1ddbcd72e63e) | [252s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642484995) | [250s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642028409) |
+| [`4c655a32`](https://github.com/KatherLab/MediSwarm/commit/4c655a328de036453247d2c4e4ba8a0e9bf989d9) | [494s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642928679) | [203s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642406320) |
+| [`ccc78a8b`](https://github.com/KatherLab/MediSwarm/commit/ccc78a8b5ea2b99b83815be16aa5b39da247c67d) | [262s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643666591) | [222s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642779788) |
+| [`9ac2ca56`](https://github.com/KatherLab/MediSwarm/commit/9ac2ca56d9fe1a783270a30ad81d36719bf1c320) | [271s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644109735) | [197s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643147934) |
+| [`b46973a0`](https://github.com/KatherLab/MediSwarm/commit/b46973a036b7ffec6b94bdbc349118f64adc9dde) | [288s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30644557902) | [237s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643457856) |
+| Unchanged `b46973a0` replay | [179s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30645002326) | [129s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643822548) |
+
+The replay telemetry explains the floor. ODELIA served 44 of 45 cache objects,
+yet spent 164 seconds exporting the 5.2 GB result into the local Docker image
+store. STAMP hit every cache object and still spent 121 seconds on the same
+local-image export phase. BoringCache's final cache publication itself stayed
+under one second in both runs.
+
+These are ordered transition samples on GitHub-hosted runners, not repeated
+statistical trials or direct subtractions from MediSwarm's privileged
+self-hosted-runner timings. The proof establishes cross-run reuse after
+pruning, but the mandatory `docker build` local-image boundary prevents a
+consistent first-build win. MediSwarm should be downgraded from a top prospect
+unless a design-partner test can reduce or avoid that materialization cost.
 
 ## Upstream boundary
 

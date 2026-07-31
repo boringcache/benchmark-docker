@@ -57,11 +57,27 @@ measured lifecycle builds and loads the local service image before startup.
 
 ## Result
 
-Pending the isolated seed, five changed-commit builds, and unchanged final
-replay. A useful result should move the complete build/load/start boundary
-materially below 20 seconds or demonstrate enough aggregate savings across the
-22-job fan-out to justify the remote-cache setup. Otherwise a digest-pinned,
-scanned development image is the better recommendation.
+This proof did not clear its acceptance threshold. The four rolling revisions
+with unchanged Docker inputs took 36, 40, 36, and 36 seconds: a 36-second
+median, effectively the same as the roughly 37-second upstream average. The
+`uv.lock` change then took 56 seconds, and an unchanged replay of that revision
+took 39 seconds. Remote layer reuse works, but cache setup, image load, and
+container startup leave no material end-to-end saving for this already-short
+lifecycle.
+
+| Source | Complete prepare / Compose build-load-start |
+|---|---:|
+| [`b01b2e22`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/b01b2e22a341) cold seed | [70s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642677359) |
+| [`84f72466`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/84f72466ce76) | [36s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642835955) |
+| [`b8efa3b7`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/b8efa3b71dcb) | [40s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642924268) |
+| [`2eb40b76`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/2eb40b76d139) | [36s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643010945) |
+| [`a497c6e4`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/a497c6e42626) | [36s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643133909) |
+| [`d3015695`](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/commit/d3015695def1), `uv.lock` change | [56s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643229640) |
+| Unchanged `d3015695` replay | [39s](https://github.com/boringcache/docker-cache-proofs/actions/runs/30643358171) |
+
+The honest recommendation is a digest-pinned, scanned development image that
+the fan-out jobs pull directly. That removes the repeated build and tooling
+setup rather than placing a remote cache in front of a small build.
 
 ## Upstream trust boundary
 
@@ -83,8 +99,4 @@ image scanning or publication controls.
 - [Guardrails workflow from the same pull request](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/actions/runs/29125489785)
 - [Representative 39-second `make start` job](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/actions/runs/29125489822/job/86470056843)
 
-- [Canary-pinned seed run](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642677359)
-
-The seed completed the full preparation, Compose build/load, and container
-startup boundary in 70 seconds. The rolling series is still required before
-deciding whether the warm path clears the proof's sub-20-second threshold.
+- [Controlled rolling series](https://github.com/boringcache/docker-cache-proofs/actions?query=branch%3Aagent%2Fvilnacrm-compose-proof+event%3Aworkflow_dispatch)

@@ -10,6 +10,9 @@ on:
         required: true
         type: choice
         options:
+          - biar-automation-orchestrator
+          - biar-datalakehouse-api
+          - biar-jupyterhub
           - blockscout-frontend
           - mozilla-experimenter
           - skip-skipruntime-bake
@@ -19,6 +22,9 @@ on:
           - dependabot-updater-core
           - iggy-rust-server
           - iggy-rust-server-sccache
+          - cloudcost-exporter-amd64
+          - cloudcost-exporter-amd64-go
+          - proteus-controller-multiarch
           - kvrocks-docker
           - kvrocks-docker-sccache
           - nmisp-nightly
@@ -67,7 +73,7 @@ on:
         required: true
         type: choice
         default: none
-        options: [none, load, local-registry]
+        options: [none, load, local-registry, ghcr]
       buildkit_image:
         description: Optional managed BoringCache BuildKit image.
         required: false
@@ -128,6 +134,8 @@ jobs:
       docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
       rust_target_cache_kind: ${{ steps.case.outputs.rust_target_cache_kind }}
       rust_target_cache_id_pattern: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
+      native_matrix: ${{ steps.case.outputs.native_matrix }}
+      native_matrix_enabled: ${{ steps.case.outputs.native_matrix_enabled }}
     steps:
       - uses: actions/checkout@v6
       - id: case
@@ -146,7 +154,7 @@ jobs:
 
   github-actions-cache:
     name: GHA
-    if: ${{ !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
+    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -199,7 +207,7 @@ jobs:
 
   registry-cache:
     name: GHCR
-    if: ${{ inputs.lane_filter == 'registry-buildkit' }}
+    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -258,6 +266,7 @@ jobs:
 
   boringcache:
     name: ${{ needs.case.outputs.docker_tool_cache != '' && 'BoringCache + toolcache' || 'BoringCache' }}
+    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -316,3 +325,90 @@ jobs:
           cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+
+  boringcache-native:
+    name: BoringCache + toolcache (${{ matrix.arch }})
+    if: ${{ needs.case.outputs.native_matrix_enabled == 'true' && (inputs.lane_filter == 'all' || inputs.lane_filter == 'buildkit') }}
+    needs: case
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.case.outputs.native_matrix) }}
+    runs-on: ${{ matrix.runner_label }}
+    timeout-minutes: 180
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
+      BORINGCACHE_SAVE_TOKEN: ${{ secrets.BORINGCACHE_SAVE_TOKEN }}
+      BORINGCACHE_GHCR_READ_USER: ${{ vars.BORINGCACHE_GHCR_READ_USER || github.actor }}
+      BORINGCACHE_GHCR_READ_TOKEN: ${{ secrets.BORINGCACHE_GHCR_READ_TOKEN }}
+      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
+      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
+      CASE_ID: ${{ needs.case.outputs.case_id }}
+      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
+      BENCHMARK_ID: ${{ format('{0}-{1}{2}-bc', needs.case.outputs.benchmark_id, matrix.arch, inputs.rust_target_cache && '-target' || '') }}
+      CACHE_ID: ${{ format('{0}-{1}', needs.case.outputs.cache_id, matrix.arch) }}
+      BENCHMARK_WORKSPACE: boringcache/docker-cache-proof
+      CACHE_LANE: ${{ inputs.cache_lane }}
+      CACHE_SCOPE_SUFFIX: ${{ format('-{0}-{1}', needs.case.outputs.case_id, matrix.arch) }}
+      DOCKER_BUILD_EXTRA_ARGS: |
+        ${{ needs.case.outputs.docker_build_extra_args }}
+        --platform=${{ matrix.platform }}
+      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+      - name: Free disk space
+        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
+        run: ./scripts/free-runner-disk.sh
+      - name: Run native BoringCache proof
+        uses: ./.github/actions/docker-case-benchmark
+        with:
+          strategy: boringcache
+          cache_lane: ${{ inputs.cache_lane }}
+          benchmark_id: ${{ format('{0}-{1}{2}-bc', needs.case.outputs.benchmark_id, matrix.arch, inputs.rust_target_cache && '-target' || '') }}
+          cache_id: ${{ format('{0}-{1}', needs.case.outputs.cache_id, matrix.arch) }}
+          cache_scope_suffix: ${{ format('-{0}-{1}{2}{3}', needs.case.outputs.case_id, matrix.arch, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_tag: ${{ format('{0}-{1}', needs.case.outputs.image_tag, matrix.arch) }}
+          docker_build_extra_args: |
+            ${{ needs.case.outputs.docker_build_extra_args }}
+            --platform=${{ matrix.platform }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          rust_target_cache: ${{ inputs.rust_target_cache && 'true' || 'false' }}
+          rust_target_cache_id_pattern: ${{ needs.case.outputs.rust_target_cache_id_pattern }}
+          build_output: ${{ inputs.build_output }}
+          runner_label: ${{ matrix.runner_label }}
+          cli_platform: ${{ matrix.cli_platform }}
+          cli_version: ${{ inputs.cli_version }}
+          setup_qemu: 'false'
+          buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+
+  publish-native-manifest:
+    name: Publish native multi-arch manifest
+    if: ${{ needs.case.outputs.native_matrix_enabled == 'true' && inputs.build_output == 'ghcr' }}
+    needs: [case, boringcache-native]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Join native architecture images
+        env:
+          IMAGE_TAG: ${{ needs.case.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "$IMAGE_TAG" \
+            "${IMAGE_TAG}-amd64" \
+            "${IMAGE_TAG}-arm64"
+          docker buildx imagetools inspect "$IMAGE_TAG"

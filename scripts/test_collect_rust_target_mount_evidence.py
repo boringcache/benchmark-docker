@@ -64,6 +64,39 @@ class CollectRustTargetMountEvidenceTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "did not complete"):
             summarize(events, "^/?cargo-target-")
 
+    def test_totals_each_platform_target_mount(self) -> None:
+        log = """
+#8 boringcache cache mount hydrate cacheID="/proteus-target-amd64" status=hit compressedBytes=10000000 uncompressedBytes=50000000 files=120
+#9 boringcache cache mount hydrate cacheID="/proteus-target-arm64" status=hit compressedBytes=20000000 uncompressedBytes=90000000 files=220
+#19 boringcache cache mount publish cacheID="/proteus-target-amd64" status=archive_built compressedBytes=10000061 uncompressedBytes=50000100 files=121
+#19 boringcache cache mount publish cacheID="/proteus-target-amd64" status=published compressedBytes=10000061
+#20 boringcache cache mount publish cacheID="/proteus-target-arm64" status=archive_built compressedBytes=20000039 uncompressedBytes=90000200 files=222
+#20 boringcache cache mount publish cacheID="/proteus-target-arm64" status=published compressedBytes=20000039
+"""
+        pattern = "^/?proteus-target-"
+        payload = summarize(parse_events(log, pattern), pattern)
+
+        self.assertEqual(payload["classification"], "stable")
+        self.assertEqual(payload["previous_compressed_bytes"], 30_000_000)
+        self.assertEqual(payload["current_compressed_bytes"], 30_000_100)
+        self.assertEqual(payload["compressed_bytes_delta"], 100)
+        self.assertEqual(payload["current_uncompressed_bytes"], 140_000_300)
+        self.assertEqual(payload["current_files"], 343)
+        self.assertEqual(len(payload["mounts"]), 2)
+        self.assertTrue(payload["publish_complete"])
+
+    def test_requires_terminal_evidence_for_every_matching_mount(self) -> None:
+        log = """
+#8 boringcache cache mount hydrate cacheID="/proteus-target-amd64" status=miss
+#9 boringcache cache mount hydrate cacheID="/proteus-target-arm64" status=miss
+#19 boringcache cache mount publish cacheID="/proteus-target-amd64" status=archive_built compressedBytes=10000000 uncompressedBytes=50000000 files=120
+#19 boringcache cache mount publish cacheID="/proteus-target-amd64" status=published compressedBytes=10000000
+"""
+        pattern = "^/?proteus-target-"
+
+        with self.assertRaisesRegex(ValueError, "proteus-target-arm64"):
+            summarize(parse_events(log, pattern), pattern)
+
 
 if __name__ == "__main__":
     unittest.main()

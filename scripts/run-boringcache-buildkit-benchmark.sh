@@ -472,7 +472,7 @@ while true; do
     load)
       output_args+=(--load)
       ;;
-    local-registry)
+    local-registry|ghcr)
       output_args+=(--push)
       ;;
     *)

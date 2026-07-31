@@ -9,6 +9,7 @@ Each case pins an upstream repository and source revision so fresh and rolling r
 - Docker cases live in [`cases/`](cases/).
 - Cases use upstream Dockerfiles and build contexts unless an explicit benchmark overlay is part of the case.
 - Multi-image cases can use an explicit Bake overlay while keeping the pinned upstream Dockerfiles and contexts unchanged.
+- Compose cases keep the upstream lifecycle command and let the CLI add a temporary per-service cache override.
 
 ## What It Measures
 
@@ -59,5 +60,6 @@ Each run uploads machine-readable JSON and Markdown summaries using the same art
 ## Prospect proofs
 
 - [Mozilla Experimenter Bake proof](prospects/mozilla-experimenter.md)
+- [MAE Docker Compose proof](prospects/mae-compose.md)
 - [Blockscout frontend proof](prospects/blockscout-frontend.md)
 - [terraform-aws-cli matrix proof](prospects/terraform-aws-cli.md)

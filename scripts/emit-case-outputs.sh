@@ -57,6 +57,8 @@ context="$(jq -r '.docker.context // "."' "$case_file")"
 image="$(jq -er '.docker.image' "$case_file")"
 bake_file="$(jq -r '.docker.bake_file // ""' "$case_file")"
 bake_group="$(jq -r '.docker.bake_group // ""' "$case_file")"
+compose_file="$(jq -r '.docker.compose_file // ""' "$case_file")"
+compose_command="$(jq -r '.docker.compose_command[]?' "$case_file")"
 expected_images="$(jq -r '.docker.expected_images[]?' "$case_file")"
 runner_label="$(jq -r '.workflow.runner_label // "ubuntu-latest"' "$case_file")"
 cli_platform="$(jq -r '.workflow.cli_platform // "linux-amd64"' "$case_file")"
@@ -78,6 +80,12 @@ case "$build_family" in
   bake)
     if [[ -z "$bake_file" || -z "$bake_group" ]]; then
       echo "docker.bake_file and docker.bake_group are required for Bake case ${case_id}" >&2
+      exit 1
+    fi
+    ;;
+  compose)
+    if [[ -z "$compose_file" || -z "$compose_command" ]]; then
+      echo "docker.compose_file and docker.compose_command are required for Compose case ${case_id}" >&2
       exit 1
     fi
     ;;
@@ -118,6 +126,8 @@ write_output "dockerfile_path" "${dockerfile:+${source_path}/${dockerfile}}"
 write_output "docker_context" "${source_path}/${context}"
 write_output "docker_bake_file" "$bake_file"
 write_output "docker_bake_group" "$bake_group"
+write_output "docker_compose_file" "$compose_file"
+write_multiline_output "docker_compose_command" "$compose_command"
 write_multiline_output "docker_expected_images" "$expected_images"
 write_output "image_tag" "$image_tag"
 write_output "runner_label" "$runner_label"

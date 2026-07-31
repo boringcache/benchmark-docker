@@ -20,6 +20,8 @@ docker_build_family="${DOCKER_BUILD_FAMILY:-buildx-build}"
 docker_working_directory="${BENCHMARK_DOCKER_WORKING_DIRECTORY:-}"
 docker_bake_file="${DOCKER_BAKE_FILE:-}"
 docker_bake_group="${DOCKER_BAKE_GROUP:-}"
+docker_compose_file="${DOCKER_COMPOSE_FILE:-}"
+docker_compose_command="${DOCKER_COMPOSE_COMMAND:-}"
 resolved_cache_tags_csv=""
 export BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS="${BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS:-1}"
 cleanup() { :; }
@@ -61,7 +63,7 @@ write_build_metrics() {
   local import_status=""
   local cached_steps=""
 
-  if [[ "$docker_build_family" == "bake" ]]; then
+  if [[ "$docker_build_family" == "bake" || "$docker_build_family" == "compose" ]]; then
     import_seconds="$(find_max_step_seconds "importing cache manifest from")"
     export_seconds="$(find_max_step_seconds "exporting cache to boringcache")"
   else
@@ -372,6 +374,15 @@ prepare_build_command() {
       build_command+=("${output_args[@]}")
       build_command+=("$docker_bake_group")
       ;;
+    compose)
+      [[ -n "$docker_working_directory" ]] || { echo "BENCHMARK_DOCKER_WORKING_DIRECTORY is required for Compose" >&2; return 1; }
+      [[ -n "$docker_compose_file" ]] || { echo "DOCKER_COMPOSE_FILE is required for Compose" >&2; return 1; }
+      [[ -n "$docker_compose_command" ]] || { echo "DOCKER_COMPOSE_COMMAND is required for Compose" >&2; return 1; }
+      build_command=(docker compose --file "$docker_compose_file")
+      while IFS= read -r argument; do
+        [[ -n "$argument" ]] && build_command+=("$argument")
+      done <<< "$docker_compose_command"
+      ;;
     *)
       echo "Unknown Docker build family: ${docker_build_family}" >&2
       return 1
@@ -379,8 +390,8 @@ prepare_build_command() {
   esac
 }
 
-capture_bake_plan() {
-  [[ "$docker_build_family" == "bake" ]] || return 0
+capture_build_plan() {
+  [[ "$docker_build_family" == "bake" || "$docker_build_family" == "compose" ]] || return 0
 
   local plan_path="${BENCHMARK_BAKE_PLAN_OUTPUT:-}"
   if [[ -z "$plan_path" ]]; then
@@ -404,7 +415,7 @@ capture_bake_plan() {
     ' "$plan_path" | awk '!seen[$0]++' | paste -sd, -
   )"
   if [[ -z "$resolved_cache_tags_csv" ]]; then
-    echo "BoringCache Bake dry-run did not expose any save cache refs." >&2
+    echo "BoringCache ${docker_build_family} dry-run did not expose any save cache refs." >&2
     return 1
   fi
 }
@@ -437,17 +448,17 @@ run_wrapped_boringcache_build() {
   done
 
   prepare_build_command
-  capture_bake_plan
+  capture_build_plan
 
   : > "$build_log"
   set +e
-  if [[ "$docker_build_family" == "bake" ]]; then
+  if [[ "$docker_build_family" == "bake" || "$docker_build_family" == "compose" ]]; then
     (
       cd "$docker_working_directory"
-      DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}"
+      DOCKER_BUILDKIT=1 BUILDKIT_PROGRESS=plain BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}"
     ) 2>&1 | tee "$build_log"
   else
-    DOCKER_BUILDKIT=1 BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}" 2>&1 | tee "$build_log"
+    DOCKER_BUILDKIT=1 BUILDKIT_PROGRESS=plain BORINGCACHE_TIMING_TRACE=1 boringcache "${boringcache_args[@]}" -- "${build_command[@]}" 2>&1 | tee "$build_log"
   fi
   status=${PIPESTATUS[0]}
   set -e

@@ -58,6 +58,7 @@ for case_id in mediswarm-odelia mediswarm-stamp; do
     --ref mediswarm-classic-proof \
     --rolling-bootstrap-ref seed \
     --lane-filter buildkit \
+    --build-output load \
     --cli-version vcli-canary-851ae8ac013f \
     --cache-scope-suffix mediswarm-rolling-1 \
     --warm-replay \

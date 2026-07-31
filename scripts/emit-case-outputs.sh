@@ -76,6 +76,11 @@ case "$build_family" in
     ;;
 esac
 
+if [[ "$build_family" == "classic-build" && "$build_output" != "load" ]]; then
+  echo "classic-build case ${case_id} requires build_output=load to preserve the upstream local-image contract" >&2
+  exit 1
+fi
+
 if [[ "$build_output" == "local-registry" ]]; then
   image_tag="127.0.0.1:5001/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 elif [[ "$build_output" == "ghcr" ]]; then

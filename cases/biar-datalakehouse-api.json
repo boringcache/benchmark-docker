@@ -1,0 +1,27 @@
+{
+  "id": "biar-datalakehouse-api",
+  "source": {
+    "repo": "tazama-lf/biar",
+    "pain_url": "https://github.com/tazama-lf/biar/issues/142",
+    "evidence_run": "https://github.com/tazama-lf/biar/actions/runs/30026601442",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "6d18d74dd184bb43fc4cf8e24313cd0fc5370f17",
+    "seed": "d2cc03d2bd57537056a876c9a8a371c7f4d601bb",
+    "rolling1": "c6731af1eaa6fa15d6f14bff8841e79404f51b02",
+    "rolling2": "278ea44b96e002bc4cd9bb89420129d992ba57bf",
+    "rolling3": "448de8aa0eba17e2a5ac11ecfac03cb972537f7b",
+    "rolling4": "657ad9487e61a519b13bacbe20a3acbb7121316a"
+  },
+  "docker": {
+    "context": "datalakehouse-api",
+    "dockerfile": "datalakehouse-api/Dockerfile",
+    "image": "biar-datalakehouse-api",
+    "platform": "linux/amd64",
+    "original_cache": "none in the painful run; current main uses type=gha,mode=min,scope=datalakehouse-api"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

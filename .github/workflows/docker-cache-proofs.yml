@@ -10,7 +10,11 @@ on:
         required: true
         type: choice
         options:
+          - biar-automation-orchestrator
+          - biar-datalakehouse-api
+          - biar-jupyterhub
           - blockscout-frontend
+          - mozilla-experimenter
           - phentrieve-api
           - wormhole-solana
           - cardstack-realm-server
@@ -120,6 +124,11 @@ jobs:
       project_ref: ${{ steps.case.outputs.project_ref }}
       dockerfile_path: ${{ steps.case.outputs.dockerfile_path }}
       docker_context: ${{ steps.case.outputs.docker_context }}
+      docker_build_family: ${{ steps.case.outputs.docker_build_family }}
+      docker_working_directory: ${{ steps.case.outputs.docker_working_directory }}
+      docker_bake_file: ${{ steps.case.outputs.docker_bake_file }}
+      docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
+      docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
@@ -187,6 +196,11 @@ jobs:
           project_ref: ${{ needs.case.outputs.project_ref }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
+          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
+          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
+          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
           docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
@@ -237,6 +251,11 @@ jobs:
           project_ref: ${{ needs.case.outputs.project_ref }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
+          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
+          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
+          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
           docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
@@ -294,6 +313,11 @@ jobs:
           project_ref: ${{ needs.case.outputs.project_ref }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
+          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
+          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
+          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
           docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}

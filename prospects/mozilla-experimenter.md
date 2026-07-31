@@ -42,11 +42,15 @@ boringcache docker \
 
 ## Result
 
-Pending the isolated bootstrap and unchanged-source warm replay.
+The proof includes both an isolated bootstrap plus unchanged-source warm replay
+and a four-snapshot rolling series. The rolling snapshots were chosen from the
+issue-era first-parent history because each checkpoint changes a Docker input:
+feature manifests, removed Experimenter code, rollout templates, and Nimbus
+DevTools code. This avoids presenting workflow-only commits as cache churn.
 
 ## Evidence
 
-Pending public workflow runs and benchmark artifacts.
+Pending the four-snapshot rolling series and final artifact summary.
 
 ## What this would mean for Experimenter
 

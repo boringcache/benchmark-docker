@@ -7,7 +7,11 @@
   },
   "refs": {
     "issue": "1470cbd9ac2aada7352696f6414227fa09a31f42",
-    "main": "ed47b2fcbcd2db9a80219817297f22bf20888e1b"
+    "main": "ed47b2fcbcd2db9a80219817297f22bf20888e1b",
+    "rolling1": "14901f442a10cbe9163e9f9df43f8a859bf4471d",
+    "rolling2": "9663c40fa517089769b6bc56c70fff256a65f8d0",
+    "rolling3": "23484f47688929b406bce37aae49a9460314abcf",
+    "rolling4": "1470cbd9ac2aada7352696f6414227fa09a31f42"
   },
   "docker": {
     "build_family": "bake",

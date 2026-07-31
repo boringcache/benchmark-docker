@@ -68,6 +68,9 @@ image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
 if [[ "$build_output" == "local-registry" ]]; then
   image_tag="127.0.0.1:5001/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
+elif [[ "$build_output" == "ghcr" ]]; then
+  repository_owner="${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required for GHCR output}"
+  image_tag="ghcr.io/${repository_owner}/${image}-proof:${ref_key}-${GITHUB_RUN_ID:-local}"
 fi
 
 extra_args="$(

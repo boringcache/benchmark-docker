@@ -39,7 +39,7 @@ Options:
   --rolling-bootstrap-ref REF_KEY Ref key for rolling bootstrap (default: main)
   --rolling-ref REF_KEY           Add one rolling ref key; repeatable
   --rolling-refs A,B,C            Add comma-separated rolling ref keys
-  --build-output MODE             none, load, or local-registry (default: none)
+  --build-output MODE             none, load, local-registry, or ghcr (default: none)
   --lane-filter FILTER            all, buildkit, or gha-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
   --rust-target-cache             Offload and measure the case's declared Cargo target cache mount
@@ -160,7 +160,7 @@ if [[ -z "$case_id" ]]; then
 fi
 
 case "$build_output" in
-  none | load | local-registry)
+  none | load | local-registry | ghcr)
     ;;
   *)
     echo "Unsupported build output: $build_output" >&2

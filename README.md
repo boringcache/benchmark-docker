@@ -48,12 +48,13 @@ but replaces emulation with parallel native GitHub-hosted runners:
   file counts, and growth.
 
 Run the native amd64 + arm64 BoringCache matrix and its additional target-mount
-lane against per-runner local registry pushes with:
+lane. Each job pushes its architecture image to GHCR, then a final job publishes
+their shared multi-arch manifest:
 
 ```sh
 ./scripts/dispatch-proof-series.sh \
   --case proteus-controller-multiarch \
-  --build-output local-registry \
+  --build-output ghcr \
   --compare-rust-target \
   --warm-replay
 ```

@@ -65,7 +65,7 @@ on:
         required: true
         type: choice
         default: none
-        options: [none, load, local-registry]
+        options: [none, load, local-registry, ghcr]
       buildkit_image:
         description: Optional managed BoringCache BuildKit image.
         required: false
@@ -96,7 +96,7 @@ on:
 permissions:
   contents: read
   actions: write
-  packages: read
+  packages: write
 
 jobs:
   case:
@@ -306,3 +306,26 @@ jobs:
           cli_version: ${{ inputs.cli_version }}
           setup_qemu: 'false'
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+
+  publish-native-manifest:
+    name: Publish native multi-arch manifest
+    if: ${{ needs.case.outputs.native_matrix_enabled == 'true' && inputs.build_output == 'ghcr' }}
+    needs: [case, boringcache-native]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Join native architecture images
+        env:
+          IMAGE_TAG: ${{ needs.case.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "$IMAGE_TAG" \
+            "${IMAGE_TAG}-amd64" \
+            "${IMAGE_TAG}-arm64"
+          docker buildx imagetools inspect "$IMAGE_TAG"

@@ -12,6 +12,7 @@ on:
         options:
           - blockscout-frontend
           - mozilla-experimenter
+          - skip-skipruntime-bake
           - phentrieve-api
           - wormhole-solana
           - cardstack-realm-server
@@ -117,6 +118,7 @@ jobs:
       docker_bake_file: ${{ steps.case.outputs.docker_bake_file }}
       docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
       docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
+      cli_version: ${{ steps.case.outputs.cli_version }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
@@ -311,6 +313,6 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
-          cli_version: ${{ inputs.cli_version }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}

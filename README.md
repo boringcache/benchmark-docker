@@ -18,6 +18,11 @@ Docker cases compare:
 
 Fresh runs seed an isolated cache from the pinned source. Rolling runs build a later pinned revision against the same stable cache scope.
 
+Registry-cache prospect cases can opt into the `registry-buildkit` lane. That
+control writes one case-specific GHCR tag and records both its export timing and
+the package versions retained after tag replacement. It remains a comparison
+control; BoringCache proofs continue to use the CLI-managed BuildKit backend.
+
 BoringCache has one Docker cache product path in these proofs. The CLI owns the
 builder and emits the native `type=boringcache` cache configuration; registry
 cache and alternate-backend benchmark lanes have been retired.

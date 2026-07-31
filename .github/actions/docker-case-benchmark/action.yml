@@ -52,6 +52,18 @@ inputs:
     description: Image output mode for UX parity. none measures cache-only build; local-registry pushes to a temporary local registry.
     required: false
     default: none
+  registry_cache_ref:
+    description: GHCR repository reference used by the opt-in registry-cache control.
+    required: false
+    default: ''
+  registry_package_owner:
+    description: GHCR package owner used for retained-version accounting.
+    required: false
+    default: ''
+  registry_package_name:
+    description: GHCR package name used for retained-version accounting.
+    required: false
+    default: ''
   cli_platform:
     required: false
     default: linux-amd64
@@ -75,7 +87,7 @@ runs:
       STRATEGY: "${{ inputs.strategy }}"
     run: |
       case "$STRATEGY" in
-        actions-cache|boringcache) ;;
+        actions-cache|boringcache|registry-cache) ;;
         *) echo "Unknown Docker benchmark strategy: $STRATEGY" >&2; exit 1 ;;
       esac
     shell: bash
@@ -206,16 +218,35 @@ runs:
       fi
     shell: bash
   - name: Set up Docker Buildx
-    if: "${{ inputs.strategy == 'actions-cache' }}"
+    if: "${{ inputs.strategy == 'actions-cache' || inputs.strategy == 'registry-cache' }}"
     id: buildx
     uses: docker/setup-buildx-action@v4
     with:
       driver-opts: |
         image=${{ inputs.buildkit_image }}
         network=host
+  - name: Log in to GHCR registry cache
+    if: "${{ inputs.strategy == 'registry-cache' }}"
+    uses: docker/login-action@v4.2.0
+    with:
+      registry: ghcr.io
+      username: "${{ github.actor }}"
+      password: "${{ github.token }}"
   - name: Expose GitHub runtime for Buildx cache
     if: "${{ inputs.strategy == 'actions-cache' }}"
     uses: crazy-max/ghaction-github-runtime@v4
+  - name: Validate GHCR registry cache inputs
+    if: "${{ inputs.strategy == 'registry-cache' }}"
+    env:
+      REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"
+      REGISTRY_PACKAGE_OWNER: "${{ inputs.registry_package_owner }}"
+      REGISTRY_PACKAGE_NAME: "${{ inputs.registry_package_name }}"
+    run: |
+      set -euo pipefail
+      [[ "$REGISTRY_CACHE_REF" == ghcr.io/* ]] || { echo "registry_cache_ref must be a ghcr.io reference" >&2; exit 1; }
+      [[ -n "$REGISTRY_PACKAGE_OWNER" ]] || { echo "registry_package_owner is required" >&2; exit 1; }
+      [[ -n "$REGISTRY_PACKAGE_NAME" ]] || { echo "registry_package_name is required" >&2; exit 1; }
+    shell: bash
   - name: Prepare GitHub Actions Cache write probe
     if: "${{ inputs.strategy == 'actions-cache' }}"
     run: |
@@ -256,6 +287,7 @@ runs:
       BENCHMARK_DOCKER_CONTEXT: "${{ inputs.docker_context }}"
       DOCKER_TOOL_CACHE: "${{ inputs.docker_tool_cache }}"
       GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"
+      REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"
     run: |
       set -euo pipefail
 
@@ -306,7 +338,8 @@ runs:
           fi
         fi
       else
-        build_log="$(mktemp /tmp/${BENCHMARK_ID}-ac-build.XXXXXX.log)"
+        strategy="${{ inputs.strategy }}"
+        build_log="$(mktemp /tmp/${BENCHMARK_ID}-${strategy}-build.XXXXXX.log)"
         find_step_id() {
           local pattern="$1"
           sed -nE "s/^#([0-9]+) ${pattern}.*/\\1/p" "$build_log" | tail -n1
@@ -318,6 +351,9 @@ runs:
         }
 
         selected_scope="$CACHE_SCOPE_PRIMARY"
+        registry_cache_import_status=""
+        registry_cache_tag=""
+        registry_cache_target=""
         phase_start="${{ steps.build_timing_start.outputs.started_at }}"
         start="$(date +%s)"
         attempt=1
@@ -348,15 +384,42 @@ runs:
               ;;
           esac
           if [[ "$CACHE_LANE" == "rolling" ]]; then
-            build_cache_args=(
-              --cache-from "type=gha,scope=${selected_scope}"
-              --cache-to "type=gha,mode=max,scope=${selected_scope}"
-            )
+            if [[ "$strategy" == "actions-cache" ]]; then
+              build_cache_args=(
+                --cache-from "type=gha,scope=${selected_scope}"
+                --cache-to "type=gha,mode=max,scope=${selected_scope}"
+              )
+            else
+              registry_cache_tag="$selected_scope"
+              registry_cache_target="${REGISTRY_CACHE_REF:?Missing registry cache ref}:${registry_cache_tag}"
+              if docker buildx imagetools inspect "$registry_cache_target" >/dev/null 2>&1; then
+                registry_cache_import_status="ok"
+                build_cache_args=(
+                  --cache-from "type=registry,ref=${registry_cache_target}"
+                  --cache-to "type=registry,ref=${registry_cache_target},mode=max,image-manifest=true,oci-mediatypes=true"
+                )
+              else
+                registry_cache_import_status="missing"
+                echo "No prior GHCR cache tag found for ${registry_cache_tag}; bootstrapping rolling cache."
+                build_cache_args=(
+                  --cache-to "type=registry,ref=${registry_cache_target},mode=max,image-manifest=true,oci-mediatypes=true"
+                )
+              fi
+            fi
           else
-            build_cache_args=(
-              --no-cache
-              --cache-to "type=gha,mode=max,scope=${selected_scope}"
-            )
+            if [[ "$strategy" == "actions-cache" ]]; then
+              build_cache_args=(
+                --no-cache
+                --cache-to "type=gha,mode=max,scope=${selected_scope}"
+              )
+            else
+              registry_cache_tag="$selected_scope"
+              registry_cache_target="${REGISTRY_CACHE_REF:?Missing registry cache ref}:${registry_cache_tag}"
+              build_cache_args=(
+                --no-cache
+                --cache-to "type=registry,ref=${registry_cache_target},mode=max,image-manifest=true,oci-mediatypes=true"
+              )
+            fi
           fi
           : > "$build_log"
           set +e
@@ -390,20 +453,30 @@ runs:
         done
 
         export_verified=0
-        for _ in $(seq 1 20); do
-          response="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100&key=index-${selected_scope}" 2>/dev/null || true)"
-          if [[ -n "$response" ]] && jq -e '.actions_caches | type == "array"' <<<"$response" >/dev/null 2>&1; then
-            matches="$(jq '.actions_caches | length' <<<"$response")"
-            if [[ "$matches" -gt 0 ]]; then
+        if [[ "$strategy" == "actions-cache" ]]; then
+          for _ in $(seq 1 20); do
+            response="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100&key=index-${selected_scope}" 2>/dev/null || true)"
+            if [[ -n "$response" ]] && jq -e '.actions_caches | type == "array"' <<<"$response" >/dev/null 2>&1; then
+              matches="$(jq '.actions_caches | length' <<<"$response")"
+              if [[ "$matches" -gt 0 ]]; then
+                export_verified=1
+                break
+              fi
+            fi
+            sleep 3
+          done
+        else
+          for _ in $(seq 1 20); do
+            if docker buildx imagetools inspect "$registry_cache_target" >/dev/null 2>&1; then
               export_verified=1
               break
             fi
-          fi
-          sleep 3
-        done
+            sleep 3
+          done
+        fi
 
         if [[ "$export_verified" -ne 1 ]]; then
-          echo "Docker cache export probe failed: no index cache entry was touched for index-${selected_scope}" >&2
+          echo "Docker cache export probe failed for strategy=${strategy}, scope=${selected_scope}" >&2
           exit 1
         fi
 
@@ -416,13 +489,46 @@ runs:
         if [[ -n "$import_seconds" ]]; then
           echo "docker_cache_import_seconds=${import_seconds}" >> "$GITHUB_OUTPUT"
         fi
-        export_step="$(find_step_id "preparing build cache for export")"
+        if [[ "$strategy" == "actions-cache" ]]; then
+          export_step="$(find_step_id "preparing build cache for export")"
+        else
+          export_step="$(find_step_id "exporting cache to registry")"
+        fi
         export_seconds="$(find_step_seconds "$export_step")"
         if [[ -n "$export_seconds" ]]; then
           echo "docker_cache_export_seconds=${export_seconds}" >> "$GITHUB_OUTPUT"
         fi
         cached_steps="$(grep -Ec '^#[0-9]+ CACHED$' "$build_log" || true)"
         echo "buildkit_cached_steps=${cached_steps}" >> "$GITHUB_OUTPUT"
+        if [[ "$strategy" == "registry-cache" ]]; then
+          echo "cache_import_status=${registry_cache_import_status}" >> "$GITHUB_OUTPUT"
+          echo "registry_cache_tag=${registry_cache_tag}" >> "$GITHUB_OUTPUT"
+
+          diagnostics_file="benchmark-diagnostics/${BENCHMARK_ID}-registry-cache-${CACHE_LANE}-build.txt"
+          mkdir -p "$(dirname "$diagnostics_file")"
+          {
+            echo "strategy=registry-cache"
+            echo "mode=${CACHE_LANE}"
+            echo "cache_ref=${registry_cache_target}"
+            echo "import_status=${registry_cache_import_status}"
+            echo "cached_steps=${cached_steps}"
+            echo "import_lines<<EOF"
+            grep -E 'importing cache manifest|inferred cache manifest type' "$build_log" || true
+            echo "EOF"
+            echo "export_tail<<EOF"
+            grep -E 'exporting cache to registry|DONE [0-9.]+s$' "$build_log" | tail -n 80 || true
+            echo "EOF"
+          } > "$diagnostics_file"
+
+          if [[ -z "$export_seconds" ]]; then
+            echo "GHCR cache export completed without a measurable export tail." >&2
+            exit 1
+          fi
+          if [[ "$registry_cache_import_status" == "ok" && -z "$import_seconds" ]]; then
+            echo "GHCR cache import was present but its duration was not measurable." >&2
+            exit 1
+          fi
+        fi
       fi
     shell: bash
   - name: Capture local registry diagnostics
@@ -449,6 +555,13 @@ runs:
     uses: actions/upload-artifact@v6
     with:
       name: benchmark-diagnostics-${{ inputs.benchmark_id }}-boringcache-${{ inputs.cache_lane }}
+      path: benchmark-diagnostics/*
+      if-no-files-found: ignore
+  - name: Upload registry cache diagnostics
+    if: "${{ inputs.strategy == 'registry-cache' && always() }}"
+    uses: actions/upload-artifact@v6
+    with:
+      name: benchmark-diagnostics-${{ inputs.benchmark_id }}-registry-cache-${{ inputs.cache_lane }}
       path: benchmark-diagnostics/*
       if-no-files-found: ignore
   - name: Upload local registry diagnostics
@@ -499,6 +612,27 @@ runs:
       bytes="$(.benchmark-config/scripts/sum-gha-cache-by-key.sh --docker-repo-total "$BENCHMARK_ID" "${{ steps.scope.outputs.scope_started_at }}")"
       echo "bytes=${bytes}" >> "$GITHUB_OUTPUT"
     shell: bash
+  - name: Measure GHCR registry cache storage usage
+    if: "${{ inputs.strategy == 'registry-cache' }}"
+    id: registry_cache_size
+    env:
+      GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"
+      REGISTRY_PACKAGE_OWNER: "${{ inputs.registry_package_owner }}"
+      REGISTRY_PACKAGE_NAME: "${{ inputs.registry_package_name }}"
+      REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"
+      REGISTRY_CACHE_TAG: "${{ steps.measured_build.outputs.registry_cache_tag }}"
+    run: |
+      set -euo pipefail
+      mkdir -p benchmark-storage
+      breakdown_path="benchmark-storage/ghcr-storage-breakdown.json"
+      bytes="$(GHCR_STORAGE_BREAKDOWN_PATH="$breakdown_path" .benchmark-config/scripts/sum-ghcr-cache-sizes.sh \
+        "$REGISTRY_PACKAGE_OWNER" \
+        "$REGISTRY_PACKAGE_NAME" \
+        "$REGISTRY_CACHE_REF" \
+        "$REGISTRY_CACHE_TAG")"
+      echo "bytes=${bytes}" >> "$GITHUB_OUTPUT"
+      echo "breakdown_path=${breakdown_path}" >> "$GITHUB_OUTPUT"
+    shell: bash
   - name: Capture pinned upstream ref
     id: upstream_ref
     run: echo "sha=${PROJECT_REF}" >> "$GITHUB_OUTPUT"
@@ -533,6 +667,8 @@ runs:
       BC_BYTES: "${{ steps.bc_cache_size.outputs.bytes }}"
       BC_STORAGE_BREAKDOWN_PATH: "${{ steps.bc_cache_size.outputs.breakdown_path }}"
       AC_BYTES: "${{ steps.ac_cache_size.outputs.bytes }}"
+      REGISTRY_BYTES: "${{ steps.registry_cache_size.outputs.bytes }}"
+      REGISTRY_STORAGE_BREAKDOWN_PATH: "${{ steps.registry_cache_size.outputs.breakdown_path }}"
     run: |
       set -euo pipefail
 
@@ -651,6 +787,36 @@ runs:
           emit hit_behavior_note "Rolling lane: one continuous-commit build imports the prior GitHub Actions cache, exports the updated cache, and records that commit build only."
         else
           emit hit_behavior_note "Fresh lane: one cold build runs the pinned base tree with --no-cache while exporting cache for storage accounting, and records that build only. No second build runs inside this job."
+        fi
+      elif [[ "$STRATEGY" == "registry-cache" ]]; then
+        emit cache_import_status "$MEASURED_CACHE_IMPORT_STATUS"
+        emit oci_hydration_policy ""
+        emit oci_body_local_hits ""
+        emit oci_body_remote_fetches ""
+        emit oci_body_local_bytes ""
+        emit oci_body_remote_bytes ""
+        emit oci_body_local_duration_ms ""
+        emit oci_body_remote_duration_ms ""
+        emit startup_oci_body_inserted ""
+        emit startup_oci_body_failures ""
+        emit startup_oci_body_cold_blobs ""
+        emit startup_oci_body_duration_ms ""
+        emit oci_new_blob_count ""
+        emit oci_new_blob_bytes ""
+        emit oci_upload_requested_blobs ""
+        emit oci_upload_already_present ""
+        emit oci_upload_batch_seconds ""
+
+        require cache_storage_bytes "$REGISTRY_BYTES"
+        emit cache_storage_bytes "$REGISTRY_BYTES"
+        emit cache_storage_source "ghcr-package-versions"
+        emit cache_storage_breakdown_json "$REGISTRY_STORAGE_BREAKDOWN_PATH"
+        emit bytes_uploaded ""
+
+        if [[ "$CACHE_LANE" == "rolling" ]]; then
+          emit hit_behavior_note "Rolling lane: one continuous-commit build imports the prior GHCR registry cache, replaces the same cache tag, and records retained tagged and untagged manifests."
+        else
+          emit hit_behavior_note "Fresh lane: one cold build exports a run-scoped GHCR registry cache and records retained package storage."
         fi
       else
         echo "Unknown strategy: ${STRATEGY}" >&2

@@ -10,6 +10,7 @@ on:
         required: true
         type: choice
         options:
+          - blockscout-frontend
           - phentrieve-api
           - wormhole-solana
           - cardstack-realm-server
@@ -90,12 +91,12 @@ on:
         required: true
         type: choice
         default: all
-        options: [all, buildkit, gha-buildkit]
+        options: [all, buildkit, gha-buildkit, registry-buildkit]
 
 permissions:
   contents: read
   actions: write
-  packages: read
+  packages: write
 
 jobs:
   case:
@@ -182,6 +183,60 @@ jobs:
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
+
+  registry-cache:
+    name: GHCR
+    if: ${{ inputs.lane_filter == 'registry-buildkit' }}
+    needs: case
+    runs-on: ${{ needs.case.outputs.runner_label }}
+    timeout-minutes: 180
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BORINGCACHE_GHCR_READ_USER: ${{ vars.BORINGCACHE_GHCR_READ_USER || github.actor }}
+      BORINGCACHE_GHCR_READ_TOKEN: ${{ secrets.BORINGCACHE_GHCR_READ_TOKEN }}
+      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
+      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
+      CASE_ID: ${{ needs.case.outputs.case_id }}
+      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
+      BENCHMARK_ID: ${{ needs.case.outputs.benchmark_id }}-ghcr
+      CACHE_ID: ${{ needs.case.outputs.cache_id }}
+      CACHE_LANE: ${{ inputs.cache_lane }}
+      CACHE_SCOPE_SUFFIX: -${{ needs.case.outputs.case_id }}
+      DOCKER_BUILD_EXTRA_ARGS: ${{ needs.case.outputs.docker_build_extra_args }}
+      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+      - name: Free disk space
+        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
+        run: ./scripts/free-runner-disk.sh
+      - name: Run GHCR registry cache control
+        uses: ./.github/actions/docker-case-benchmark
+        with:
+          strategy: registry-cache
+          cache_lane: ${{ inputs.cache_lane }}
+          benchmark_id: ${{ needs.case.outputs.benchmark_id }}-ghcr
+          cache_id: ${{ needs.case.outputs.cache_id }}
+          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, inputs.cache_scope_suffix) }}
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_tag: ${{ needs.case.outputs.image_tag }}
+          docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          build_output: ${{ inputs.build_output }}
+          runner_label: ${{ needs.case.outputs.runner_label }}
+          cli_platform: ${{ needs.case.outputs.cli_platform }}
+          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
+          buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+          registry_cache_ref: ghcr.io/${{ github.repository_owner }}/docker-cache-proof-${{ needs.case.outputs.case_id }}
+          registry_package_owner: ${{ github.repository_owner }}
+          registry_package_name: docker-cache-proof-${{ needs.case.outputs.case_id }}
 
   boringcache:
     name: ${{ needs.case.outputs.docker_tool_cache != '' && 'BoringCache + toolcache' || 'BoringCache' }}

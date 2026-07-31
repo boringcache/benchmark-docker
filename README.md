@@ -39,9 +39,12 @@ GitHub's `type=gha` exporter does not preserve cache-mount contents, so the
 ordinary GHA lane runs once as the external-cache control; the target variant
 adds only the isolated BoringCache offload lane.
 
-BoringCache has one Docker cache product path in these proofs. The CLI owns the
-builder and emits the native `type=boringcache` cache configuration; registry
-cache and alternate-backend benchmark lanes have been retired.
+Some cases also compare against a GHCR registry cache. These runs use one stable
+tag and record the export time and package versions left behind when the tag is
+replaced.
+
+GHCR is only a comparison. BoringCache always uses its normal product path: the
+CLI manages the builder and uses the native `type=boringcache` exporter.
 
 ## Workflows
 

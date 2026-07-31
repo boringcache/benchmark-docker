@@ -40,7 +40,7 @@ Options:
   --rolling-ref REF_KEY           Add one rolling ref key; repeatable
   --rolling-refs A,B,C            Add comma-separated rolling ref keys
   --build-output MODE             none, load, or local-registry (default: none)
-  --lane-filter FILTER            all, buildkit, or gha-buildkit (default: all)
+  --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
   --rust-target-cache             Offload and measure the case's declared Cargo target cache mount
   --compare-rust-target           Run each selected phase once without and once with target offload
@@ -169,7 +169,7 @@ case "$build_output" in
 esac
 
 case "$lane_filter" in
-  all | buildkit | gha-buildkit)
+  all | buildkit | gha-buildkit | registry-buildkit)
     ;;
   *)
     echo "Unsupported lane filter: $lane_filter" >&2
@@ -228,7 +228,10 @@ wait_for_run() {
     )"
     if [[ -n "$run_id" ]]; then
       echo "$run_url"
-      gh run watch "$run_id" --repo "$repo" --exit-status
+      # A Docker proof can run for well over ten minutes. The gh default polls
+      # every three seconds, which can exhaust the authenticated REST quota
+      # during a multi-commit series.
+      gh run watch "$run_id" --repo "$repo" --exit-status --interval 30
       return 0
     fi
     sleep 5

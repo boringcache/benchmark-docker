@@ -61,11 +61,16 @@ setup_qemu="$(jq -r '.workflow.setup_qemu // false' "$case_file")"
 docker_tool_cache="$(jq -r '.docker.tool_cache // ""' "$case_file")"
 rust_target_cache_kind="$(jq -r '.docker.rust_target_cache.kind // ""' "$case_file")"
 rust_target_cache_id_pattern="$(jq -r '.docker.rust_target_cache.id_pattern // ""' "$case_file")"
+native_matrix="$(jq -c '.workflow.native_matrix // {include: []}' "$case_file")"
+native_matrix_enabled="$(jq -r '((.workflow.native_matrix.include // []) | length) > 0' "$case_file")"
 source_path=".work/${case_id}/source"
 image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
 if [[ "$build_output" == "local-registry" ]]; then
   image_tag="127.0.0.1:5001/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
+elif [[ "$build_output" == "ghcr" ]]; then
+  repository_owner="${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required for GHCR output}"
+  image_tag="ghcr.io/${repository_owner}/${image}-proof:${ref_key}-${GITHUB_RUN_ID:-local}"
 fi
 
 extra_args="$(
@@ -99,4 +104,6 @@ write_output "setup_qemu" "$setup_qemu"
 write_multiline_output "docker_tool_cache" "$docker_tool_cache"
 write_output "rust_target_cache_kind" "$rust_target_cache_kind"
 write_output "rust_target_cache_id_pattern" "$rust_target_cache_id_pattern"
+write_output "native_matrix" "$native_matrix"
+write_output "native_matrix_enabled" "$native_matrix_enabled"
 write_multiline_output "docker_build_extra_args" "$extra_args"

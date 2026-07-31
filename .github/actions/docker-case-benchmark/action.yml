@@ -57,7 +57,7 @@ inputs:
     required: false
     default: ''
   build_output:
-    description: Image output mode for UX parity. none measures cache-only build; local-registry pushes to a temporary local registry.
+    description: Image output mode. none measures cache only; local-registry emulates a push; ghcr publishes the image.
     required: false
     default: none
   registry_cache_ref:
@@ -147,6 +147,19 @@ runs:
       "${{ inputs.cli_version }}"
       "${{ inputs.cli_platform }}"
     shell: bash
+  - name: Pull managed BuildKit image before publish login
+    if: "${{ inputs.build_output == 'ghcr' && startsWith(inputs.buildkit_image, 'ghcr.io/') }}"
+    env:
+      BUILDKIT_IMAGE: "${{ inputs.buildkit_image }}"
+    run: docker pull "$BUILDKIT_IMAGE"
+    shell: bash
+  - name: Log in to GHCR for image publishing
+    if: "${{ inputs.build_output == 'ghcr' }}"
+    uses: docker/login-action@v4.2.0
+    with:
+      registry: ghcr.io
+      username: "${{ github.actor }}"
+      password: "${{ github.token }}"
   - name: Checkout benchmark repo
     uses: actions/checkout@v6
     with:
@@ -385,7 +398,7 @@ runs:
             load)
               output_args+=(--load)
               ;;
-            local-registry)
+            local-registry|ghcr)
               output_args+=(--push)
               ;;
             *)

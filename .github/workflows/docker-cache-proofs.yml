@@ -19,6 +19,7 @@ on:
           - iggy-rust-server-sccache
           - cloudcost-exporter-amd64
           - cloudcost-exporter-amd64-go
+          - tiled-container-canary
           - proteus-controller-multiarch
           - kvrocks-docker
           - kvrocks-docker-sccache

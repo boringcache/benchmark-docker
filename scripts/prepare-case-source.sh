@@ -75,6 +75,29 @@ if [[ -n "$overlay_dockerfile" ]]; then
   cp "$overlay_source" "$overlay_target"
 fi
 
+while IFS=$'\t' read -r overlay_source_path overlay_target_path; do
+  [[ -n "$overlay_source_path" && -n "$overlay_target_path" ]] || continue
+  case "/${overlay_source_path}/" in
+    *"/../"*) echo "Overlay source must stay inside the proof repository: ${overlay_source_path}" >&2; exit 1 ;;
+  esac
+  case "/${overlay_target_path}/" in
+    *"/../"*) echo "Overlay target must stay inside the prepared source: ${overlay_target_path}" >&2; exit 1 ;;
+  esac
+  if [[ "$overlay_source_path" == /* || "$overlay_target_path" == /* ]]; then
+    echo "Overlay paths must be relative: ${overlay_source_path} -> ${overlay_target_path}" >&2
+    exit 1
+  fi
+
+  overlay_source="${repo_root}/${overlay_source_path}"
+  overlay_target="${source_dir}/${overlay_target_path}"
+  if [[ ! -f "$overlay_source" ]]; then
+    echo "Missing overlay file: ${overlay_source}" >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$overlay_target")"
+  cp "$overlay_source" "$overlay_target"
+done < <(jq -r '.docker.overlay_files[]? | [.source, .target] | @tsv' "$case_file")
+
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "source_path=.work/${case_id}/source"

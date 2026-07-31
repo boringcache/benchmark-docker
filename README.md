@@ -8,6 +8,7 @@ Each case pins an upstream repository and source revision so fresh and rolling r
 
 - Docker cases live in [`cases/`](cases/).
 - Cases use upstream Dockerfiles and build contexts unless an explicit benchmark overlay is part of the case.
+- Multi-image cases can use an explicit Bake overlay while keeping the pinned upstream Dockerfiles and contexts unchanged.
 
 ## What It Measures
 
@@ -54,3 +55,9 @@ CLI manages the builder and uses the native `type=boringcache` exporter.
 ## Output
 
 Each run uploads machine-readable JSON and Markdown summaries using the same artifact shape as the other BoringCache benchmark repositories.
+
+## Prospect proofs
+
+- [Mozilla Experimenter Bake proof](prospects/mozilla-experimenter.md)
+- [Blockscout frontend proof](prospects/blockscout-frontend.md)
+- [terraform-aws-cli matrix proof](prospects/terraform-aws-cli.md)

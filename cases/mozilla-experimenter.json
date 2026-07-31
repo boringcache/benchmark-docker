@@ -1,0 +1,34 @@
+{
+  "id": "mozilla-experimenter",
+  "source": {
+    "repo": "mozilla/experimenter",
+    "pain_url": "https://github.com/mozilla/experimenter/issues/16332",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "issue": "1470cbd9ac2aada7352696f6414227fa09a31f42",
+    "main": "ed47b2fcbcd2db9a80219817297f22bf20888e1b"
+  },
+  "docker": {
+    "build_family": "bake",
+    "bake_file": "docker-bake.hcl",
+    "bake_group": "ci-test",
+    "image": "mozilla-experimenter",
+    "expected_images": [
+      "experimenter:megazords",
+      "schemas:dev",
+      "cirrus:deploy",
+      "experimenter:test"
+    ],
+    "overlay_files": [
+      {
+        "source": "overlays/mozilla-experimenter/docker-bake.hcl",
+        "target": "docker-bake.hcl"
+      }
+    ],
+    "original_cache": "No shared cache: docker driver with locally loaded experimenter:megazords build context"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

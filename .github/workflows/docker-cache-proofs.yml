@@ -12,8 +12,11 @@ on:
         options:
           - blockscout-frontend
           - mae-containers
+          - mae-containers-tool-cache
           - mae-collab-e2e
+          - mae-collab-e2e-tool-cache
           - mae-headless-e2e
+          - mae-headless-e2e-tool-cache
           - mozilla-experimenter
           - phentrieve-api
           - wormhole-solana

@@ -1,0 +1,26 @@
+{
+  "id": "cloudcost-exporter-amd64-go",
+  "name": "Grafana Cloud Cost Exporter image with Go build cache (amd64)",
+  "source": {
+    "repo": "grafana/cloudcost-exporter",
+    "pain_url": "https://github.com/grafana/cloudcost-exporter/issues/1029",
+    "evidence_run": "https://github.com/grafana/cloudcost-exporter/actions/runs/27209558109/job/80335379406",
+    "runner": "GitHub-hosted ubuntu-24.04"
+  },
+  "refs": {
+    "main": "26977e7e0066177ef80cce649b5071745f566a86",
+    "rolling1": "580113c9610da388dda767eaa0acbf8d0cc2fbeb"
+  },
+  "docker": {
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "cloudcost-exporter-amd64-go",
+    "platform": "linux/amd64",
+    "original_cache": "type=gha",
+    "tool_cache": "go:{CACHE_SCOPE}-go"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-24.04",
+    "free_disk_space": false
+  }
+}

@@ -22,6 +22,17 @@ BoringCache has one Docker cache product path in these proofs. The CLI owns the
 builder and emits the native `type=boringcache` cache configuration; registry
 cache and alternate-backend benchmark lanes have been retired.
 
+## Controlled Docker + Go Proof
+
+The `cloudcost-exporter-amd64` and `cloudcost-exporter-amd64-go` cases form a
+paired proof for [Grafana Cloud Cost Exporter issue #1029](https://github.com/grafana/cloudcost-exporter/issues/1029).
+Both cases build the same upstream Dockerfile and the same two source trees.
+The rolling commit changes only `.github/workflows/release-on-pr-merge.yml`, but
+the upstream `COPY . .` still invalidates its expensive Go build step. The
+`-go` case differs only by enabling `go:{CACHE_SCOPE}-go` through
+`boringcache docker --tool-cache`, so the comparison isolates Go build-cache
+reuse when Docker must execute that step again.
+
 ## Workflows
 
 - [`Docker Benchmark`](.github/workflows/docker-cache-proofs.yml)

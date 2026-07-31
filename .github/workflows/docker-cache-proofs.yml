@@ -121,6 +121,7 @@ jobs:
       docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
       docker_compose_file: ${{ steps.case.outputs.docker_compose_file }}
       docker_compose_command: ${{ steps.case.outputs.docker_compose_command }}
+      docker_compose_success_service: ${{ steps.case.outputs.docker_compose_success_service }}
       docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
@@ -193,6 +194,7 @@ jobs:
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
           docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
           docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -250,6 +252,7 @@ jobs:
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
           docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
           docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -313,6 +316,7 @@ jobs:
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
           docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
           docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}

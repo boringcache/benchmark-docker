@@ -23,6 +23,7 @@
       "--build",
       "--wait"
     ],
+    "compose_success_service": "verifier",
     "image": "mae-headless-e2e",
     "original_cache": "No persistent cache; make docker-headless-e2e runs docker compose up --build --wait on a fresh GitHub-hosted runner"
   }

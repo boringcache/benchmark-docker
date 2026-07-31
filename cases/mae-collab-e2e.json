@@ -23,6 +23,7 @@
       "--build",
       "--wait"
     ],
+    "compose_success_service": "verifier",
     "image": "mae-collab-e2e",
     "original_cache": "No persistent cache; make docker-collab-test runs docker compose up --build --wait on a fresh GitHub-hosted runner"
   }

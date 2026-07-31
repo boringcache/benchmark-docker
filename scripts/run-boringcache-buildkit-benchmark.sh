@@ -22,6 +22,7 @@ docker_bake_file="${DOCKER_BAKE_FILE:-}"
 docker_bake_group="${DOCKER_BAKE_GROUP:-}"
 docker_compose_file="${DOCKER_COMPOSE_FILE:-}"
 docker_compose_command="${DOCKER_COMPOSE_COMMAND:-}"
+docker_compose_success_service="${DOCKER_COMPOSE_SUCCESS_SERVICE:-}"
 resolved_cache_tags_csv=""
 export BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS="${BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS:-1}"
 cleanup() { :; }
@@ -462,6 +463,39 @@ run_wrapped_boringcache_build() {
   fi
   status=${PIPESTATUS[0]}
   set -e
+
+  if [[ "$docker_build_family" == "compose" && "$status" -ne 0 ]]; then
+    local service_exit_code=""
+    if [[ -n "$docker_compose_success_service" ]]; then
+      service_exit_code="$(
+        cd "$docker_working_directory"
+        docker compose --file "$docker_compose_file" ps -a "$docker_compose_success_service" --format '{{.ExitCode}}' 2>/dev/null || true
+      )"
+      if [[ "$service_exit_code" == "0" ]]; then
+        echo "Compose service ${docker_compose_success_service} completed successfully; accepting the upstream lifecycle result." | tee -a "$build_log"
+        status=0
+      fi
+    fi
+
+    if [[ "$status" -ne 0 ]]; then
+      (
+        cd "$docker_working_directory"
+        {
+          echo "=== Docker Compose failure state ==="
+          docker compose --file "$docker_compose_file" ps -a || true
+          docker compose --file "$docker_compose_file" logs --no-color --no-log-prefix || true
+          echo "=== End Docker Compose failure state ==="
+        }
+      ) 2>&1 | tee -a "$build_log"
+    fi
+  fi
+
+  if [[ "$docker_build_family" == "compose" ]]; then
+    (
+      cd "$docker_working_directory"
+      docker compose --file "$docker_compose_file" down --volumes --timeout 10
+    ) >> "$build_log" 2>&1 || true
+  fi
 }
 
 

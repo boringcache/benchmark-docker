@@ -46,6 +46,12 @@ override. Compose still owns the build, container lifecycle, health checks, and
 local images; the proof does not translate MAE's project into a maintained Bake
 file or add cache settings to its source.
 
+The two `up --wait` cases preserve MAE's Makefile success contract: Compose may
+return nonzero when the one-shot `verifier` service stops, so the harness accepts
+that result only when the verifier's recorded exit code is zero. Other lifecycle
+failures remain failures and include scoped Compose status and logs in the proof
+artifact.
+
 ## Result
 
 Pending the isolated seed, changed-source rolling build, and unchanged-source

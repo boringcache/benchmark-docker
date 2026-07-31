@@ -26,14 +26,16 @@ cache and alternate-backend benchmark lanes have been retired.
 
 The `cloudcost-exporter-amd64` and `cloudcost-exporter-amd64-go` cases form a
 paired proof for [Grafana Cloud Cost Exporter issue #1029](https://github.com/grafana/cloudcost-exporter/issues/1029).
-Both cases build the same upstream Dockerfile and the same two source trees.
-The rolling commit changes only `.github/workflows/release-on-pr-merge.yml`, but
-the upstream `COPY . .` still invalidates its expensive Go build step. The
-`-go` case differs only by enabling `go:{CACHE_SCOPE}-go` through
-`boringcache docker --tool-cache`, so the comparison isolates Go build-cache
-reuse when Docker must execute that step again.
+Both cases build the same upstream Dockerfile and the same six consecutive
+source trees, starting five commits before the issue-era tip. The sequence
+includes Go changes, a docs-only change, a dependency/dashboard change, and a
+workflow-only change; the Dockerfile remains byte-identical throughout. Every
+context change invalidates the upstream `COPY . .`, so its expensive Go build
+step executes again. The `-go` case differs only by enabling
+`go:{CACHE_SCOPE}-go` through `boringcache docker --tool-cache`, isolating Go
+build-cache reuse across the full rolling series.
 
-The measured rolling pair used fresh GitHub-hosted `ubuntu-24.04` runners and
+An initial final-transition spot check used fresh GitHub-hosted `ubuntu-24.04` runners and
 isolated cache scopes. Both samples imported usable Docker cache, reused five
 Docker steps, executed the same final `make build-binary` step, and exported
 cache in 0.8 seconds.

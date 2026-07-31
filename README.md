@@ -33,6 +33,21 @@ the upstream `COPY . .` still invalidates its expensive Go build step. The
 `boringcache docker --tool-cache`, so the comparison isolates Go build-cache
 reuse when Docker must execute that step again.
 
+The measured rolling pair used fresh GitHub-hosted `ubuntu-24.04` runners and
+isolated cache scopes. Both samples imported usable Docker cache, reused five
+Docker steps, executed the same final `make build-binary` step, and exported
+cache in 0.8 seconds.
+
+| Lane | Measured build | `make build-binary` | GitHub job wall time |
+|---|---:|---:|---:|
+| [Docker only](https://github.com/boringcache/docker-cache-proofs/actions/runs/30624756311) | 143s | 115.1s | 2m 34s |
+| [Docker + Go](https://github.com/boringcache/docker-cache-proofs/actions/runs/30624756242) | 63s | 23.7s | 1m 16s |
+
+Adding the Go tool cache cut the measured build by 80 seconds (56%), the
+re-executed compile step by 91.4 seconds (79%), and the complete job by 78
+seconds (51%). The Docker-only lane's 115.1-second compile also closely
+reproduces the upstream issue's reported 117-second cold Go compile.
+
 ## Workflows
 
 - [`Docker Benchmark`](.github/workflows/docker-cache-proofs.yml)

@@ -43,20 +43,16 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registr
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+# Dioxus supplies RUSTC_WORKSPACE_WRAPPER=dx, which Cargo would nest under sccache.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${BUILDARCH},sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${BUILDARCH},sharing=locked \
     --mount=type=cache,target=/src/target,id=proteus-target-ui-${BUILDARCH},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
-    export RUSTC_WRAPPER=sccache; \
-    sccache --zero-stats >/dev/null 2>&1 || true; \
-    dx build -p proteus-ui --platform web --release; \
+    RUSTC_WRAPPER= dx build -p proteus-ui --platform web --release; \
     mkdir -p crates/proteus-ui/dist; \
-    cp -a target/dx/proteus-ui/release/web/public/. crates/proteus-ui/dist/; \
-    echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
-    sccache --show-stats; \
-    echo END_BORINGCACHE_SCCACHE_STATS
+    cp -a target/dx/proteus-ui/release/web/public/. crates/proteus-ui/dist/
 
 FROM rust:${RUST_VERSION}-bookworm AS builder
 WORKDIR /src

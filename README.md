@@ -38,7 +38,7 @@ but replaces emulation with parallel native GitHub-hosted runners:
 
 - amd64 runs on `ubuntu-24.04` and arm64 runs on `ubuntu-24.04-arm`;
 - each native lane builds and pushes one architecture-specific image, after
-  which the production workflow can join their digests into one manifest;
+  which the final job joins those tags into one manifest;
 - BoringCache's managed BuildKit backend owns the ordinary OCI layer cache;
 - `--tool-cache sccache` reuses compiler outputs for the Dioxus CLI and both
   native controller builds, while only Dioxus's workspace wrapper stays outside
@@ -74,9 +74,12 @@ GitHub's `type=gha` exporter does not preserve cache-mount contents, so the
 ordinary GHA lane runs once as the external-cache control; the target variant
 adds only the isolated BoringCache offload lane.
 
-BoringCache has one Docker cache product path in these proofs. The CLI owns the
-builder and emits the native `type=boringcache` cache configuration; registry
-cache and alternate-backend benchmark lanes have been retired.
+Some cases also compare against a GHCR registry cache. These runs use one stable
+tag and record the export time and package versions left behind when the tag is
+replaced.
+
+GHCR is only a comparison. BoringCache always uses its normal product path: the
+CLI manages the builder and uses the native `type=boringcache` exporter.
 
 ## Workflows
 

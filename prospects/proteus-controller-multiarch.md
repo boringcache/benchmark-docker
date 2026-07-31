@@ -1,14 +1,15 @@
 # Proteus multi-arch Docker cache proof
 
 [Proteus reported](https://github.com/CraftingTech/proteus/issues/45) that its
-multi-arch Rust image took 4h36 to build. The images reached GHCR, but the job
-then failed while exporting a `type=gha,mode=max` cache with `not_found`.
+multi-arch Rust image workflow ran for 4h36. The images reached GHCR, but the
+job then failed while exporting a `type=gha,mode=max` cache with `not_found`.
 
-We used Proteus's Dockerfile to answer two questions:
+We built Proteus's pinned source with a proof Dockerfile based on its deployment
+stages to answer two questions:
 
 - How much of the build time came from running ARM64 compilation through QEMU?
-- How much could Docker layers, sccache, and Cargo `target` caches save on the
-  next commit?
+- How much could Docker layers, sccache, and Cargo `target` caches save on a
+  later source change?
 
 ## Result
 
@@ -22,9 +23,9 @@ same multi-arch image.
 | [Native cold seed](https://github.com/boringcache/docker-cache-proofs/actions/runs/30633095558) | Native AMD64 + native ARM64, in parallel | Image and cache published | 15m47s |
 | [Native rolling commit](https://github.com/boringcache/docker-cache-proofs/actions/runs/30634211494) | Native AMD64 + native ARM64, in parallel | Image and cache published | 4m46s |
 
-The native cold workflow was 17.5x shorter than the QEMU workflow. Reusing its
-cache on the next Proteus commit made the complete workflow another 3.3x
-shorter.
+The native cold workflow used 94.3% less wall time than the QEMU workflow, a
+17.5x speedup. Reusing its cache on a later Proteus commit reduced the complete
+workflow by another 69.8%, a 3.3x speedup.
 
 These are two different improvements. The cold result mostly comes from not
 emulating ARM64. The rolling result shows the cache saving work between real
@@ -42,18 +43,14 @@ for each platform.
 | Build the UI | 2m17s | 18m33s | 1m16s | 1m04s |
 | Build the controller | 6m42s | 53m44s | 3m42s | 3m28s |
 
-On ARM64, the native runner made these three Rust-heavy steps 15x to 26x
-shorter. The two native jobs ran at the same time, so the full workflow waited
+On ARM64, the native runner reduced these three Rust-heavy step times by 93.6%
+to 96.2%. The two native jobs ran at the same time, so the full workflow waited
 for the slower job rather than adding both build times together.
-
-We also tried keeping QEMU in the proof fork. The final attempt was still in
-the build after 58 minutes, so we
-[stopped it](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627456547)
-and moved to native ARM64. It is not included as a completed benchmark.
 
 ## Cache result
 
-The rolling run built the next Proteus commit, not an unchanged replay.
+The rolling run built a later Proteus commit, not an unchanged replay. The
+rolling ref is three commits ahead of the seed.
 
 | Source | Commit | AMD64 build | ARM64 build | Full workflow |
 |---|---|---:|---:|---:|
@@ -120,7 +117,7 @@ Use a new cache scope suffix so an older run cannot seed the result:
 ```
 
 The first run seeds the native architecture caches. The second checks out the
-next Proteus commit and records BuildKit, sccache, Cargo `target`, image, and
+later Proteus commit and records BuildKit, sccache, Cargo `target`, image, and
 manifest evidence.
 
 ## What this means for Proteus
@@ -129,6 +126,6 @@ Proteus does not need QEMU for this public repository. GitHub provides
 [standard AMD64 and ARM64 hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners),
 so each image can be built on its own architecture and joined afterward.
 
-That changes the cold multi-arch workflow from 4h36 to about 16 minutes. On the
-next commit, BoringCache reduced it to under five minutes and published the
+That changes the cold multi-arch workflow from 4h36 to about 16 minutes. On a
+later commit, BoringCache reduced it to under five minutes and published the
 cache without turning a successful image push into a failed job.

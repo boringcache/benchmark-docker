@@ -365,6 +365,7 @@ runs:
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
       DOCKER_COMPOSE_FILE: "${{ inputs.docker_compose_file }}"
       DOCKER_COMPOSE_COMMAND: "${{ inputs.docker_compose_command }}"
+      DOCKER_COMPOSE_SUCCESS_SERVICE: "${{ inputs.docker_compose_success_service }}"
       DOCKER_TOOL_CACHE: "${{ inputs.docker_tool_cache }}"
       GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"
       REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"

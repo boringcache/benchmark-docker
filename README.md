@@ -39,10 +39,12 @@ while making each cache boundary visible:
 - the architecture-independent Dioxus WASM build runs once on the native build
   platform instead of reinstalling and rebuilding under QEMU;
 - BoringCache's managed BuildKit backend owns the ordinary OCI layer cache;
-- `--tool-cache sccache` reuses compiler outputs inside the Docker build; and
+- `--tool-cache sccache` reuses compiler outputs for the native Dioxus CLI and
+  controller builds, while Dioxus's workspace wrapper and the QEMU build stay
+  outside sccache; and
 - the target variant offloads the UI and per-architecture controller
   `/src/target` cache mounts and records their compressed bytes, logical bytes,
-  file counts, and growth.
+  file counts, and growth, including the expensive emulated controller target.
 
 Run the original GHA control, the ordinary BoringCache lane, and the additional
 target-mount lane against a local multi-platform registry push with:

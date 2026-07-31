@@ -35,20 +35,40 @@ step executes again. The `-go` case differs only by enabling
 `go:{CACHE_SCOPE}-go` through `boringcache docker --tool-cache`, isolating Go
 build-cache reuse across the full rolling series.
 
-An initial final-transition spot check used fresh GitHub-hosted `ubuntu-24.04` runners and
-isolated cache scopes. Both samples imported usable Docker cache, reused five
-Docker steps, executed the same final `make build-binary` step, and exported
-cache in 0.8 seconds.
+The proof uses fresh GitHub-hosted `ubuntu-24.04` runners and isolated cache
+scopes. A cold rolling bootstrap seeds each scope, then each lane advances
+through the same five parent-child commits in order. The GHA and BoringCache
+Docker-only controls run together; the second case adds only the Go tool cache.
+All 15 rolling samples below were valid.
 
-| Lane | Measured build | `make build-binary` | GitHub job wall time |
-|---|---:|---:|---:|
-| [Docker only](https://github.com/boringcache/docker-cache-proofs/actions/runs/30624756311) | 143s | 115.1s | 2m 34s |
-| [Docker + Go](https://github.com/boringcache/docker-cache-proofs/actions/runs/30624756242) | 63s | 23.7s | 1m 16s |
+Each result is `measured build / make build-binary / cache export`, in seconds.
+The control-run links contain both GHA and BoringCache Docker-only jobs.
 
-Adding the Go tool cache cut the measured build by 80 seconds (56%), the
-re-executed compile step by 91.4 seconds (79%), and the complete job by 78
-seconds (51%). The Docker-only lane's 115.1-second compile also closely
-reproduces the upstream issue's reported 117-second cold Go compile.
+| Transition | Upstream change | GHA | BoringCache Docker | BoringCache Docker + Go |
+|---|---|---:|---:|---:|
+| [`9565ae6c`](https://github.com/grafana/cloudcost-exporter/commit/9565ae6cbef0759e53e1e54a5efec36219eabeaf) | RDS Go code | [168 / 119.6 / 19.3](https://github.com/boringcache/docker-cache-proofs/actions/runs/30625777642) | [144 / 113.5 / 1.0](https://github.com/boringcache/docker-cache-proofs/actions/runs/30625777642) | [66 / 24.8 / 0.8](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628444858) |
+| [`b5564877`](https://github.com/grafana/cloudcost-exporter/commit/b55648776f0d9eb8f245a7fdbd6121a59446e174) | Exporter and AWS Go code, tests, docs | [149 / 114.4 / 12.4](https://github.com/boringcache/docker-cache-proofs/actions/runs/30625991786) | [134 / 91.8 / 1.4](https://github.com/boringcache/docker-cache-proofs/actions/runs/30625991786) | [65 / 24.5 / 0.8](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628565861) |
+| [`0304705a`](https://github.com/grafana/cloudcost-exporter/commit/0304705af4cbc54dc4a6a9cadbca9ab59f8c690b) | Docs only | [174 / 115.8 / 28.5](https://github.com/boringcache/docker-cache-proofs/actions/runs/30626178332) | [144 / 115.7 / 0.9](https://github.com/boringcache/docker-cache-proofs/actions/runs/30626178332) | [73 / 21.5 / 1.0](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628691013) |
+| [`26977e7e`](https://github.com/grafana/cloudcost-exporter/commit/26977e7e0066177ef80cce649b5071745f566a86) | Go dependencies, collectors, dashboards | [182 / 116.4 / 45.9](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627448143) | [140 / 93.5 / 1.3](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627448143) | [62 / 25.1 / 0.7](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628817577) |
+| [`580113c9`](https://github.com/grafana/cloudcost-exporter/commit/580113c9610da388dda767eaa0acbf8d0cc2fbeb) | Workflow only | [173 / 118.4 / 22.5](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627697134) | [142 / 112.0 / 0.9](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627697134) | [62 / 25.6 / 1.1](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628942929) |
+
+| Lane | Median measured build | Median compile | Median export | Median job wall time |
+|---|---:|---:|---:|---:|
+| [Grafana historical run](https://github.com/grafana/cloudcost-exporter/actions/runs/27209558109/job/80335379406) | 199s | 116.8s | 40.0s | 3m 34s |
+| GHA rolling control | 173s | 116.4s | 22.5s | 3m 19s |
+| BoringCache Docker | 142s | 112.0s | 1.0s | 2m 35s |
+| BoringCache Docker + Go | 65s | 24.8s | 0.8s | 1m 22s |
+
+The historical Grafana row is one issue-era run rather than a median; its
+199-second Docker action contains the reported 116.8-second compile and
+40-second GHA export. Its trigger commit has the same source tree as the last
+rolling commit above.
+
+Across the five contemporary rolling transitions, BoringCache Docker-only cut
+median export time by 95.6% versus GHA, but its 112-second median compile
+remained effectively cold. Adding the Go tool cache cut median measured build
+time another 54.2% versus Docker-only (62.4% versus GHA), cut median compile
+time by 77.9% versus Docker-only, and cut median job wall time to 1m 22s.
 
 ## Workflows
 

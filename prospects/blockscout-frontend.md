@@ -1,76 +1,31 @@
 # Blockscout frontend Docker cache proof
 
-This proof follows [blockscout/frontend#3602](https://github.com/blockscout/frontend/issues/3602),
-where the first measured GHCR `mode=max` cache export took 150.8 seconds and
-replaced a cache tag without reclaiming the now-untagged manifest.
+[Blockscout reported](https://github.com/blockscout/frontend/issues/3602) that
+its first successful GHCR `mode=max` cache export took 150.8 seconds, or 31% of
+a 7m57s job. Replacing the cache tag also left the old manifest untagged.
 
-## Prospect question
+We ran Blockscout's Dockerfile through five consecutive commits to answer two
+questions:
 
-Can BoringCache shorten the cache-export tail and avoid the registry-tag
-lifecycle that leaves old GHCR cache manifests retained?
+- How much time could BoringCache save on a normal rolling build?
+- Could Blockscout stop managing cache tags and old manifests in GHCR?
 
-The proof compares two cache transports on the same GitHub-hosted runner class,
-Dockerfile, build arguments, platform, source commit, and BuildKit image:
+## Result
 
-- GHCR registry cache, using the upstream `mode=max`, OCI media type, and image
-  manifest settings against one stable rolling tag.
-- BoringCache's CLI-managed BuildKit backend, using its native
-  `type=boringcache` exporter and one stable rolling cache scope.
+Each rolling build reused the cache from the commit before it.
 
-The control omits upstream's `ignore-error=true` because a proof must fail when
-the cache export fails; its transport, `mode=max`, OCI media type, and image
-manifest behavior otherwise match the upstream cache.
+| Average across five rolling builds | GHCR | BoringCache | Difference |
+|---|---:|---:|---:|
+| Build time | 11m00s | 7m42s | 3m18s less (30%) |
+| Cache export | 4m30s | 3.1s | 87x shorter |
 
-The GHCR control is intentionally opt-in. It is not an alternate BoringCache
-product path and does not change the repository's default GHA-vs-BoringCache
-proof pair.
+Both sides reused a similar number of BuildKit steps. The difference came
+mostly from the time spent writing the updated cache.
 
-## Rolling source sequence
+## Runs
 
-| Ref | Commit | Upstream change |
-|---|---|---|
-| `seed` | `8d6e447a60c4` | Exclude agent worktrees from lint and test runners |
-| `rolling1` | `c3b79a0787b2` | Prometheus registry fix |
-| `rolling2` | `a204400d1a46` | Shared agent rules reorganization |
-| `rolling3` | `3e8f4939ab7b` | Merge the corepack retry and GHCR cache write-back change |
-| `rolling4` | `39bb7b3e6e5d` | Worktree dependency and pruning hooks |
-| `rolling5` | `da93fdec5b11` | `dotenv-cli` and lockfile update |
-
-This is first-parent order on Blockscout's `main` branch. It includes ordinary
-source/configuration churn, the Dockerfile/cache change that prompted the issue,
-and a dependency lockfile change.
-
-## Run protocol
-
-Use a unique scope suffix for the series. Skip the separate fresh lane, seed the
-stable rolling scope at `seed`, advance through every pinned commit, and replay
-the final commit once to measure a no-source-change warm build:
-
-```bash
-./scripts/dispatch-proof-series.sh \
-  --case blockscout-frontend \
-  --ref blockscout-frontend-proof \
-  --rolling-bootstrap-ref seed \
-  --lane-filter registry-buildkit \
-  --cache-scope-suffix prospect-20260731 \
-  --skip-fresh \
-  --warm-replay
-```
-
-Each run records total and BuildKit wall time, cache import and export time,
-and cached step count. The GHCR breakdown additionally records the active
-manifest size, the package's tagged and untagged version counts, and retained
-bytes deduplicated by blob digest across every manifest. BoringCache lifecycle
-evidence comes from the product's cache-entry inventory because its shared CAS
-accounting is not byte-for-byte comparable with a GHCR package.
-
-## Results
-
-The controlled series ran on 31 July 2026. Every paired row used the same
-`ubuntu-latest` runner class, source commit, upstream Dockerfile, build
-arguments, `linux/amd64` platform, custom BuildKit image, and `output=none`.
-`Build` is the wall time of one `docker buildx build`; `export` is the measured
-cache-export tail within that time.
+`Build` is the wall time of one `docker buildx build`. It includes the cache
+export shown in the next column.
 
 | Source | Evidence | Cached steps (BC / GHCR) | Build (BC / GHCR) | Export (BC / GHCR) | GHCR retained | Versions (untagged) |
 |---|---|---:|---:|---:|---:|---:|
@@ -82,71 +37,81 @@ cache-export tail within that time.
 | Rolling 5 `da93fdec5b11` | [run 30628873391](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628873391) | 15 / 13 | 448s / 701s | 2.7s / 278.0s | 10.88 GiB | 6 (5) |
 | Exact warm replay | [run 30629682491](https://github.com/boringcache/docker-cache-proofs/actions/runs/30629682491) | 55 / 55 | 15s / 13s | 1.0s / 6.0s | 10.88 GiB | 7 (6) |
 
-### Rolling-build result
+The five rolling builds averaged 660.4 seconds with GHCR and 462.4 seconds
+with BoringCache. Cache export averaged 270.0 seconds with GHCR and 3.1 seconds
+with BoringCache.
 
-Across the five real commit-to-commit builds, BoringCache averaged 462.4
-seconds against GHCR's 660.4 seconds. That is 198 seconds saved per build, or a
-30.0% reduction in measured `buildx` wall time.
+### Fully warm replay
 
-The difference is concentrated in the write-back path. BoringCache's final
-export averaged 3.1 seconds; GHCR averaged 270.0 seconds. The BoringCache tail
-was 87x shorter. GHCR export consumed 40.9% of its measured build time across
-the rolling sequence, while the BoringCache export consumed 0.7%.
+We ran the final commit again without changing the source. Both builds cached
+all 55 BuildKit steps. Cache import and export took 10.2 seconds with GHCR and
+1.3 seconds with BoringCache. The complete jobs took 43 and 30 seconds.
 
-This is not a cache-hit-quality trick: both lanes reused a similar number of
-BuildKit steps on every rolling commit. The `3e8f4939ab7b` row is the upstream
-merge containing the Dockerfile/corepack and GHCR cache write-back change that
-prompted issue #3602; the result persisted on that commit and the two commits
-after it.
+The `buildx` command itself took 13 seconds with GHCR and 15 seconds with
+BoringCache. The warm result shows less cache-transfer and job time, not faster
+application work.
 
-### Fully warm result
+### Storage
 
-The final no-source-change replay cached all 55 BuildKit steps in both lanes.
-BoringCache spent 0.3 seconds importing and 1.0 second exporting; GHCR spent
-4.2 seconds importing and 6.0 seconds exporting. That is 1.3 seconds versus
-10.2 seconds of measured cache transport. The complete jobs finished in 30 and
-43 seconds respectively, a 13-second or 30% end-to-end reduction.
+After the warm replay, GHCR held 10.88 GiB across seven package versions. Six
+versions were untagged, while the active cache graph was 1.93 GiB.
 
-The replay's `buildx` wall time alone was 15 seconds for BoringCache and 13
-seconds for GHCR, a two-second runner-level reversal. The warm-build claim is
-therefore about the directly measured transport and complete job, not a claim
-that BoringCache made already-cached application work faster.
+BoringCache had one current rolling tag pointing to a 1.81 GiB, 60-blob cache
+graph. Older graphs no longer held that tag.
 
-### Storage and lifecycle result
+GHCR and BoringCache account for storage differently, so these figures should
+not be used as a direct billing comparison. What the runs show is the GHCR
+growth caused by old package versions and the untagged-manifest cleanup that
+comes with it.
 
-GHCR retained storage grew from 1.94 GiB after the bootstrap to 10.88 GiB after
-the five rolling commits, even though the active cache graph remained about
-1.93 GiB. The stable tag produced six package versions, five of them untagged.
-After the identical replay, GHCR had seven versions and six untagged manifests;
-the replay added only 64,461 bytes because its blobs were unchanged.
+## What we tested
 
-The final GHCR package retained 5.63x the bytes in its active graph. These are
-digest-deduplicated totals across all package versions, so shared blobs are
-counted once rather than once per manifest.
+Both sides used the same GitHub-hosted runner class, source commit, Dockerfile,
+build arguments, `linux/amd64` platform, BuildKit image, and `output=none`.
 
-BoringCache's product inventory showed one current rolling tag pointing at a
-1,946,046,627-byte (1.81 GiB), 60-blob CAS graph. Older graphs no longer held
-the current tag. This is the lifecycle wedge: Blockscout can stop publishing
-registry-cache package versions and move retention and content deduplication
-under BoringCache's managed CAS lifecycle.
+- GHCR used Blockscout's `mode=max`, OCI media type, image manifest settings,
+  and one stable rolling tag.
+- BoringCache used its normal CLI-managed BuildKit path and one stable rolling
+  cache scope.
 
-The generic benchmark artifact reported zero BoringCache-attributable bytes
-for this shared CAS tag. That does **not** mean the cache occupied zero bytes;
-the product inventory above is the authoritative logical graph size. Because
-the BoringCache graph and GHCR package use different accounting, the storage
-claim is the demonstrated GHCR retained-to-active growth and the removal of its
-untagged-package lifecycle—not a byte-for-byte billing comparison.
+We left out Blockscout's `ignore-error=true` setting so the benchmark would
+fail if a cache export failed.
 
-## Prospect case
+The commits follow first-parent order on Blockscout's `main` branch:
 
-Blockscout's own first successful `mode=max` run spent 150.8 seconds exporting
-cache, 31% of a 7m57s job. This reproduction found the same problem across a
-real six-commit progression: GHCR's warm rolling exports took 246.9–313.1
-seconds, while BoringCache's took 2.7–3.5 seconds.
+| Ref | Commit | Change |
+|---|---|---|
+| `seed` | `8d6e447a60c4` | Exclude agent worktrees from lint and test runners |
+| `rolling1` | `c3b79a0787b2` | Prometheus registry fix |
+| `rolling2` | `a204400d1a46` | Shared agent rules reorganization |
+| `rolling3` | `3e8f4939ab7b` | Merge the corepack retry and GHCR cache write-back change |
+| `rolling4` | `39bb7b3e6e5d` | Worktree dependency and pruning hooks |
+| `rolling5` | `da93fdec5b11` | `dotenv-cli` and lockfile update |
 
-The proposed change is narrow: replace the workflow's `type=registry` cache
-import/export with BoringCache's managed BuildKit path. The application
-Dockerfile, layer model, build arguments, platform, and image output do not need
-to change. On this measured sequence, that removes roughly 3m18s from an
-average rolling build and removes GHCR cache-package tags and their untagged
-manifest cleanup from Blockscout's workflow.
+## Run it again
+
+Use a new cache scope suffix each time so an older run cannot seed the results:
+
+```bash
+./scripts/dispatch-proof-series.sh \
+  --case blockscout-frontend \
+  --ref main \
+  --rolling-bootstrap-ref seed \
+  --lane-filter registry-buildkit \
+  --cache-scope-suffix blockscout-rerun-1 \
+  --skip-fresh \
+  --warm-replay
+```
+
+The script runs the bootstrap, the five rolling commits, and one unchanged warm
+replay. Each run records build time, cache import and export time, cached steps,
+and GHCR package storage.
+
+## What this means for Blockscout
+
+Blockscout can replace the workflow's `type=registry` cache import and export
+with BoringCache's managed BuildKit path. The Dockerfile, layers, build
+arguments, platform, and image output do not need to change.
+
+In these five rolling builds, that saved an average of 3m18s per build and
+removed the need to publish and clean up GHCR cache-package tags.

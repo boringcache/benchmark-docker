@@ -14,6 +14,8 @@ on:
           - mae-containers
           - mae-collab-e2e
           - mae-headless-e2e
+          - legalquants-gateway-web
+          - legalquants-api
           - mozilla-experimenter
           - phentrieve-api
           - wormhole-solana

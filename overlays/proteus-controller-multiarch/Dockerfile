@@ -86,6 +86,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY --from=ui /src/crates/proteus-ui/dist ./crates/proteus-ui/dist
 
+# Let emulated ARM64 compilation fall back if sccache's local connection drops.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${TARGETARCH},sharing=locked \
     --mount=type=cache,target=/src/target,id=proteus-target-controller-${TARGETARCH},sharing=locked \
@@ -93,11 +94,17 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registr
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
     export RUSTC_WRAPPER=sccache; \
+    if [ "$TARGETARCH" = arm64 ]; then \
+      export SCCACHE_IGNORE_SERVER_IO_ERROR=1; \
+    fi; \
     sccache --zero-stats >/dev/null 2>&1 || true; \
     cargo build --release -p proteus-controller; \
     cp target/release/proteus-controller /src/proteus-controller; \
     echo BEGIN_BORINGCACHE_SCCACHE_STATS; \
-    sccache --show-stats; \
+    if ! sccache --show-stats; then \
+      [ "$TARGETARCH" = arm64 ]; \
+      echo "sccache stats unavailable after ARM64 compiler fallback"; \
+    fi; \
     echo END_BORINGCACHE_SCCACHE_STATS
 
 FROM gcr.io/distroless/cc-debian12:nonroot

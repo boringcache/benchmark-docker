@@ -8,6 +8,7 @@ Each case pins an upstream repository and source revision so fresh and rolling r
 
 - Docker cases live in [`cases/`](cases/).
 - Cases use upstream Dockerfiles and build contexts unless an explicit benchmark overlay is part of the case.
+- Multi-image cases can use an explicit Bake overlay while keeping the pinned upstream Dockerfiles and contexts unchanged.
 
 ## What It Measures
 
@@ -17,6 +18,18 @@ Docker cases compare:
 - BoringCache's CLI-managed BuildKit backend
 
 Fresh runs seed an isolated cache from the pinned source. Rolling runs build a later pinned revision against the same stable cache scope.
+
+### BIAR Spark-stack proof
+
+The three BIAR cases reproduce the large images reported in
+[tazama-lf/biar#142](https://github.com/tazama-lf/biar/issues/142). Each case
+pins the same upstream commit while keeping the image's original Dockerfile,
+context, platform, and independent cache identity. The controlled series seeds
+a new BoringCache scope and then replays the unchanged source so the result
+measures full-cache behavior beyond BIAR's shared default GHA cache allowance.
+
+The protocol and upstream evidence are documented in
+[`prospects/biar-spark-images.md`](prospects/biar-spark-images.md).
 
 Rust cases that declare a Cargo target cache mount can also run a paired target
 proof. The ordinary BoringCache lane remains the product control. The target
@@ -98,3 +111,9 @@ CLI manages the builder and uses the native `type=boringcache` exporter.
 ## Output
 
 Each run uploads machine-readable JSON and Markdown summaries using the same artifact shape as the other BoringCache benchmark repositories.
+
+## Prospect proofs
+
+- [Mozilla Experimenter Bake proof](prospects/mozilla-experimenter.md)
+- [Blockscout frontend proof](prospects/blockscout-frontend.md)
+- [terraform-aws-cli matrix proof](prospects/terraform-aws-cli.md)

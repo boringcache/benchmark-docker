@@ -49,8 +49,8 @@ measured lifecycle builds and loads the local service image before startup.
   --ref agent/vilnacrm-compose-proof \
   --rolling-bootstrap-ref seed \
   --lane-filter buildkit \
-  --cli-version vcli-canary-851ae8ac013f \
-  --cache-scope-suffix vilnacrm-rolling-1 \
+  --cli-version vcli-canary-6636517dfa2d \
+  --cache-scope-suffix vilna-r3 \
   --warm-replay \
   --skip-fresh
 ```
@@ -83,4 +83,8 @@ image scanning or publication controls.
 - [Guardrails workflow from the same pull request](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/actions/runs/29125489785)
 - [Representative 39-second `make start` job](https://github.com/VilnaCRM-Org/bootstrap-infrastructure/actions/runs/29125489822/job/86470056843)
 
-BoringCache run artifacts are pending.
+- [Canary-pinned seed run](https://github.com/boringcache/docker-cache-proofs/actions/runs/30642677359)
+
+The seed completed the full preparation, Compose build/load, and container
+startup boundary in 70 seconds. The rolling series is still required before
+deciding whether the warm path clears the proof's sub-20-second threshold.

@@ -4,7 +4,7 @@
     "repo": "blockscout/frontend",
     "pain_url": "https://github.com/blockscout/frontend/issues/3602",
     "evidence_run": "https://github.com/blockscout/frontend/actions/runs/30473737168",
-    "runner": "Upstream self-hosted build runner; proof uses GitHub-hosted ubuntu-latest"
+    "runner": "Blockscout uses a self-hosted runner; this proof uses GitHub-hosted ubuntu-latest"
   },
   "refs": {
     "main": "da93fdec5b11e61bb29be2ae040abe6ee901ed7e",

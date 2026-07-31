@@ -8,7 +8,7 @@
 #   docker compose run --rm --build dev        # interactive dev shell
 #
 # Benchmark overlay: the pinned upstream Dockerfile with BoringCache-backed
-# sccache plus persistent Cargo registry, Git, and target cache mounts.
+# sccache plus a persistent Cargo target cache mount.
 
 # ---------------------------------------------------------------------------
 # Stage: base — shared Rust toolchain + system deps
@@ -96,13 +96,7 @@ RUN mkdir -p crates/core/src && echo "" > crates/core/src/lib.rs && \
     mkdir -p test_fixtures/src && echo "" > test_fixtures/src/lib.rs
 
 # Build dependencies only (will fail on our dummy sources, but deps get cached)
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=mae-cargo-registry-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=mae-cargo-git-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=secret,id=boringcache-tool-cache-env \
-    . /run/secrets/boringcache-tool-cache-env && \
-    export RUSTC_WRAPPER=sccache && \
-    { cargo build --release --workspace --exclude mae-gui 2>/dev/null || true; }
+RUN cargo build --release --workspace --exclude mae-gui 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Stage: builder — full source compile
@@ -115,9 +109,7 @@ COPY . .
 # Touch all source files so cargo knows they changed vs the dummy stubs
 RUN find crates/ shared/ daemon/ test_fixtures/ -name '*.rs' -exec touch {} +
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=mae-cargo-registry-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=mae-cargo-git-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
+RUN --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     . /run/secrets/boringcache-tool-cache-env && \
     export RUSTC_WRAPPER=sccache && \
@@ -138,15 +130,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=mae-cargo-registry-${
 FROM builder AS ci
 
 RUN cargo fmt --all --check
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=mae-cargo-registry-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=mae-cargo-git-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
+RUN --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     . /run/secrets/boringcache-tool-cache-env && \
     RUSTC_WRAPPER=sccache cargo clippy --workspace --all-targets --exclude mae-gui -- -D warnings
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=mae-cargo-registry-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=mae-cargo-git-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
-    --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
+RUN --mount=type=cache,target=/mae/target,id=mae-cargo-target-${TARGETARCH}-rust-${RUST_CACHE_VERSION},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     . /run/secrets/boringcache-tool-cache-env && \
     RUSTC_WRAPPER=sccache cargo test --workspace --exclude mae-gui

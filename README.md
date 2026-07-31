@@ -45,7 +45,8 @@ but replaces emulation with parallel native GitHub-hosted runners:
   sccache; and
 - the target variant offloads the UI and per-architecture controller
   `/src/target` cache mounts and records their compressed bytes, logical bytes,
-  file counts, and growth.
+  file counts, and growth; Cargo registry/git state stays in ordinary Docker
+  layers so the target evidence contains only the two caches being claimed.
 
 Run the native amd64 + arm64 BoringCache matrix and its additional target-mount
 lane. Each job pushes its architecture image to GHCR, then a final job publishes

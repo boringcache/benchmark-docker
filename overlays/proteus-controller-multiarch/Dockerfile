@@ -33,9 +33,7 @@ RUN set -eux; \
     rm -rf "/tmp/${sccache_archive}" "/tmp/sccache-v${SCCACHE_VERSION}-${sccache_target}"; \
     sccache --version
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${BUILDARCH},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${BUILDARCH},sharing=locked \
-    --mount=type=secret,id=boringcache-tool-cache-env \
+RUN --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
     export RUSTC_WRAPPER=sccache; \
@@ -44,9 +42,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registr
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 # Dioxus supplies RUSTC_WORKSPACE_WRAPPER=dx, which Cargo would nest under sccache.
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${BUILDARCH},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${BUILDARCH},sharing=locked \
-    --mount=type=cache,target=/src/target,id=proteus-target-ui-${BUILDARCH},sharing=locked \
+RUN --mount=type=cache,target=/src/target,id=proteus-target-ui-${BUILDARCH},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \
@@ -88,9 +84,7 @@ COPY crates ./crates
 COPY --from=ui /src/crates/proteus-ui/dist ./crates/proteus-ui/dist
 
 # Each matrix lane is native, so both controller architectures can use sccache.
-RUN --mount=type=cache,target=/usr/local/cargo/registry,id=proteus-cargo-registry-${TARGETARCH},sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,id=proteus-cargo-git-${TARGETARCH},sharing=locked \
-    --mount=type=cache,target=/src/target,id=proteus-target-controller-${TARGETARCH},sharing=locked \
+RUN --mount=type=cache,target=/src/target,id=proteus-target-controller-${TARGETARCH},sharing=locked \
     --mount=type=secret,id=boringcache-tool-cache-env \
     set -eux; \
     . /run/secrets/boringcache-tool-cache-env; \

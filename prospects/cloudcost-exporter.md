@@ -42,6 +42,26 @@ Docker jobs.
 | [`26977e7e`](https://github.com/grafana/cloudcost-exporter/commit/26977e7e0066177ef80cce649b5071745f566a86) | Go dependencies, collectors, dashboards | [182 / 116.4 / 45.9](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627448143) | [140 / 93.5 / 1.3](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627448143) | [62 / 25.1 / 0.7](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628817577) |
 | [`580113c9`](https://github.com/grafana/cloudcost-exporter/commit/580113c9610da388dda767eaa0acbf8d0cc2fbeb) | Workflow only | [173 / 118.4 / 22.5](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627697134) | [142 / 112.0 / 0.9](https://github.com/boringcache/docker-cache-proofs/actions/runs/30627697134) | [62 / 25.6 / 1.1](https://github.com/boringcache/docker-cache-proofs/actions/runs/30628942929) |
 
+## How this answers issue #1029
+
+The issue raises four questions. This proof directly tests the two cache pain
+points:
+
+- **Go compilation does not survive fresh runners.** The existing Dockerfile
+  already uses a BuildKit cache mount, but that local mount is not durable
+  across GitHub-hosted runners. With the Dockerfile unchanged, BoringCache's Go
+  tool cache recorded more than 2,100 compiler-cache hits in every measured
+  transition and reduced median `make build-binary` time from 112.0 to 24.8
+  seconds versus the Docker-only lane.
+- **Exporting the Docker cache is expensive.** BoringCache's Docker cache
+  reduced median cache export from 22.5 to 1.0 seconds versus
+  `type=gha,mode=max`.
+
+The issue's other questions—whether to remove QEMU setup and whether every
+feature branch should build an image—are workflow-policy decisions outside this
+cache benchmark. The proof uses the native amd64 runner and measures the
+Docker/cache path.
+
 ## Historical reference
 
 The issue's
@@ -49,7 +69,9 @@ The issue's
 used the same source tree as the final rolling transition. Its 199-second Docker
 action contained the reported 116.8-second compile and 40-second GitHub Actions
 Cache export. It is a single historical reference rather than part of the
-five-run contemporary medians above.
+five-run contemporary medians above. That workflow requested a non-pushing
+image output; the controlled proof used `output=none` consistently in all three
+lanes.
 
 ## What we tested
 
@@ -65,7 +87,9 @@ revision, upstream Dockerfile, build context, `linux/amd64` platform, and
 - BoringCache Docker used its CLI-managed BuildKit backend.
 - BoringCache Docker + Go changed only the case identity, image name, and
   `go:{CACHE_SCOPE}-go` tool-cache setting.
-- The Dockerfile remained byte-identical across all six source trees.
+- The five measured revisions are consecutive parent-child commits, and the
+  Dockerfile remained byte-identical across the bootstrap and all five source
+  trees.
 - No Dockerfile change, registry push, or image output was used.
 - All 15 rolling samples were valid.
 

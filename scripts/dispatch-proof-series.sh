@@ -254,7 +254,9 @@ dispatch_one() {
   if [[ "$compare_rust_target" == "true" && "$target_cache" == "true" && "$lane_filter" == "all" ]]; then
     effective_lane_filter="buildkit"
   fi
-  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output} | rust-target=${target_label}"
+  local dispatch_token=""
+  dispatch_token="d$(date -u +%s)-$$"
+  local title_prefix="${case_id} | ${ref_key} | ${lane} | output=${build_output} | rust-target=${target_label} | dispatch=${dispatch_token}"
   local started_at=""
   started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -269,6 +271,7 @@ dispatch_one() {
     -f "lane_filter=${effective_lane_filter}"
     -f "cache_scope_suffix=${cache_scope_suffix}"
     -f "rust_target_cache=${target_cache}"
+    -f "dispatch_token=${dispatch_token}"
   )
 
   printf 'Dispatching:'

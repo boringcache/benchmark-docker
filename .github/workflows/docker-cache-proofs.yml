@@ -1,6 +1,6 @@
 name: Docker Benchmark
 run-name: >-
-  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off') }}
+  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4} | dispatch={5}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off', inputs.dispatch_token) }}
 
 on:
   workflow_dispatch:
@@ -85,6 +85,11 @@ on:
         required: false
         type: string
         default: ""
+      dispatch_token:
+        description: Unique caller token used to correlate a dispatched series run.
+        required: false
+        type: string
+        default: manual
       rust_target_cache:
         description: Offload Dockerfile Cargo target cache mounts for the declared Rust cases.
         required: false

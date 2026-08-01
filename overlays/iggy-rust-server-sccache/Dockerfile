@@ -19,15 +19,8 @@ ARG SCCACHE_VERSION=v0.14.0
 ENV IGGY_CI_BUILD=${IGGY_CI_BUILD}
 ENV CARGO_INCREMENTAL=0
 
-RUN apk add --no-cache bash curl tar zig make autoconf automake libtool pkgconfig hwloc-dev xz-dev xz-static nodejs npm && \
-    cargo install cargo-zigbuild --version '=0.22.1' --locked && \
-    rustup target add \
-    x86_64-unknown-linux-musl \
-    aarch64-unknown-linux-musl \
-    x86_64-unknown-linux-gnu \
-    aarch64-unknown-linux-gnu
-
 RUN set -eux; \
+    apk add --no-cache bash curl tar; \
     arch="$(uname -m)"; \
     case "$arch" in \
       x86_64) sccache_arch="x86_64" ;; \
@@ -38,6 +31,14 @@ RUN set -eux; \
     mv "/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl/sccache" /usr/local/bin/sccache; \
     chmod +x /usr/local/bin/sccache; \
     sccache --version
+
+RUN apk add --no-cache zig make autoconf automake libtool pkgconfig hwloc-dev xz-dev xz-static nodejs npm && \
+    cargo install cargo-zigbuild --version '=0.22.1' --locked && \
+    rustup target add \
+    x86_64-unknown-linux-musl \
+    aarch64-unknown-linux-musl \
+    x86_64-unknown-linux-gnu \
+    aarch64-unknown-linux-gnu
 
 ENV PKG_CONFIG_ALLOW_CROSS=1
 

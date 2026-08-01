@@ -19,7 +19,9 @@
 FROM debian:trixie-slim AS build
 
 ARG MORE_BUILD_ARGS
-ARG SCCACHE_VERSION=v0.14.0
+ARG SCCACHE_VERSION=v0.17.0
+ARG SCCACHE_SHA256_AMD64=67c4a96dd237c1f518f6b36083f270f9976d516f1e57fce891755ea782e50006
+ARG SCCACHE_SHA256_ARM64=821a86343191aa1cbab74bd42f9e93c9a63bf85e4742945f40d3ae84193c1c77
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get upgrade -y && apt-get -y --no-install-recommends install git build-essential autoconf cmake libtool python3 libssl-dev clang ca-certificates curl tar && apt-get autoremove && apt-get clean
@@ -27,12 +29,16 @@ RUN apt-get update && apt-get upgrade -y && apt-get -y --no-install-recommends i
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     case "$arch" in \
-      amd64) sccache_arch="x86_64" ;; \
-      arm64) sccache_arch="aarch64" ;; \
+      amd64) sccache_arch="x86_64"; sccache_sha256="$SCCACHE_SHA256_AMD64" ;; \
+      arm64) sccache_arch="aarch64"; sccache_sha256="$SCCACHE_SHA256_ARM64" ;; \
       *) echo "unsupported sccache architecture: ${arch}" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz" | tar xz -C /tmp; \
+    archive="/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz"; \
+    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz" -o "$archive"; \
+    echo "${sccache_sha256}  ${archive}" | sha256sum -c -; \
+    tar xzf "$archive" -C /tmp; \
     mv "/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl/sccache" /usr/local/bin/sccache; \
+    rm -f "$archive"; \
     chmod +x /usr/local/bin/sccache; \
     sccache --version
 

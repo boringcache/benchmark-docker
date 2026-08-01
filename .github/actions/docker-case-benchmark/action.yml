@@ -36,13 +36,13 @@ inputs:
   dockerfile_path:
     required: false
     default: ".work/source/Dockerfile"
+  docker_build_family:
+    description: Docker command family used by the upstream build.
+    required: false
+    default: buildx-build
   docker_context:
     required: false
     default: ".work/source"
-  docker_build_family:
-    description: Docker build family selected by the case (buildx-build or bake).
-    required: false
-    default: buildx-build
   docker_working_directory:
     description: Prepared upstream directory used for Bake project discovery.
     required: false
@@ -103,6 +103,10 @@ inputs:
     description: Reclaim runner disk before the Docker build. Useful for large real-world Docker images that can exhaust hosted-runner space mid-build.
     required: false
     default: 'false'
+  prune_builder:
+    description: Remove the local Docker builder cache before the measured build.
+    required: false
+    default: 'false'
   setup_qemu:
     description: Register QEMU binfmt handlers for an upstream multi-platform build.
     required: false
@@ -128,7 +132,7 @@ runs:
     run: |
       set -euo pipefail
       case "$DOCKER_BUILD_FAMILY" in
-        buildx-build) ;;
+        buildx-build|classic-build) ;;
         bake)
           [[ -n "$DOCKER_WORKING_DIRECTORY" ]]
           [[ -n "$DOCKER_BAKE_FILE" ]]
@@ -154,6 +158,10 @@ runs:
       sudo docker system prune --all --volumes --force
       df -h /
       docker system df || true
+    shell: bash
+  - name: Prune local Docker builder cache
+    if: "${{ inputs.prune_builder == 'true' }}"
+    run: docker builder prune -af
     shell: bash
   - name: Validate BoringCache secrets
     if: "${{ inputs.strategy == 'boringcache' }}"
@@ -345,9 +353,9 @@ runs:
       BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && '1' || '' }}"
       ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP: "${{ inputs.cache_lane == 'rolling' && 'true' || '' }}"
       IMAGE_TAG: "${{ inputs.image_tag }}"
+      DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
       DOCKERFILE_PATH: "${{ inputs.dockerfile_path }}"
       BENCHMARK_DOCKER_CONTEXT: "${{ inputs.docker_context }}"
-      DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
       BENCHMARK_DOCKER_WORKING_DIRECTORY: "${{ inputs.docker_working_directory }}"
       DOCKER_BAKE_FILE: "${{ inputs.docker_bake_file }}"
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"

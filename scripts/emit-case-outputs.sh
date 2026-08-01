@@ -61,6 +61,7 @@ expected_images="$(jq -r '.docker.expected_images[]?' "$case_file")"
 runner_label="$(jq -r '.workflow.runner_label // "ubuntu-latest"' "$case_file")"
 cli_platform="$(jq -r '.workflow.cli_platform // "linux-amd64"' "$case_file")"
 free_disk_space="$(jq -r '.workflow.free_disk_space // false' "$case_file")"
+prune_builder="$(jq -r '.workflow.prune_builder // false' "$case_file")"
 setup_qemu="$(jq -r '.workflow.setup_qemu // false' "$case_file")"
 docker_tool_cache="$(jq -r '.docker.tool_cache // ""' "$case_file")"
 rust_target_cache_kind="$(jq -r '.docker.rust_target_cache.kind // ""' "$case_file")"
@@ -71,9 +72,13 @@ source_path=".work/${case_id}/source"
 image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
 case "$build_family" in
-  buildx-build)
+  buildx-build|classic-build)
     if [[ -z "$dockerfile" ]]; then
-      echo "docker.dockerfile is required for buildx-build case ${case_id}" >&2
+      echo "docker.dockerfile is required for ${build_family} case ${case_id}" >&2
+      exit 1
+    fi
+    if [[ "$build_family" == "classic-build" && "$build_output" != "load" ]]; then
+      echo "classic-build case ${case_id} requires build_output=load to preserve the upstream local-image contract" >&2
       exit 1
     fi
     ;;
@@ -128,6 +133,7 @@ write_output "image_tag" "$image_tag"
 write_output "runner_label" "$runner_label"
 write_output "cli_platform" "$cli_platform"
 write_output "free_disk_space" "$free_disk_space"
+write_output "prune_builder" "$prune_builder"
 write_output "setup_qemu" "$setup_qemu"
 write_multiline_output "docker_tool_cache" "$docker_tool_cache"
 write_output "rust_target_cache_kind" "$rust_target_cache_kind"

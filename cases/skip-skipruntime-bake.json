@@ -33,7 +33,6 @@
   },
   "workflow": {
     "runner_label": "ubuntu-24.04",
-    "free_disk_space": true,
-    "cli_version": "vcli-canary-851ae8ac013f"
+    "free_disk_space": true
   }
 }

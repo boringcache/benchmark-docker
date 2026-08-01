@@ -45,8 +45,9 @@ boringcache docker \
     skipruntime
 ```
 
-The proof pins `vcli-canary-851ae8ac013f`, an immutable CLI canary containing
-the Bake planner. It checks out the two Skip submodules consumed by the graph
+The recorded proof pinned `vcli-canary-851ae8ac013f`, the immutable CLI canary
+that introduced the Bake planner. The current case uses the released v1.16.3
+product default. It checks out the two Skip submodules consumed by the graph
 and requests no image output, so the measurement covers the compiler and
 runtime solves plus cache publication.
 
@@ -117,5 +118,5 @@ Use a new suffix so no older proof can seed the result:
   --warm-replay
 ```
 
-The case manifest supplies the immutable CLI canary when the workflow input is
-left empty.
+The current case leaves the workflow input empty so the verified v1.16.3
+installer default owns CLI selection.

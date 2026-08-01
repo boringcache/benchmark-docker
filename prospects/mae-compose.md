@@ -167,5 +167,5 @@ The honest recommendation is narrower than “turn on every cache.” MAE would
 need the small Dockerfile integration in this proof and should use
 `boringcache docker --tool-cache sccache:<scope>` for all three jobs. Target-mount
 offload is also proven for the single-build containers path, but should not yet
-be promised for the unchanged collab and headless files: the canary still needs
-to deduplicate or otherwise plan their repeated Compose build targets.
+be promised for the unchanged collab and headless files: in this recorded
+canary cohort, repeated Compose build targets were not yet deduplicated.

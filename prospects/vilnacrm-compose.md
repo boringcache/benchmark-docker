@@ -39,9 +39,11 @@ Actions Cache as upstream, and it does not claim native uv caching. An unchanged
 
 ## Run it
 
-Use an isolated suffix and the immutable Compose-capable CLI canary. Compose
-owns image materialization, so the harness input remains `none` even though the
-measured lifecycle builds and loads the local service image before startup.
+The command below reproduces the recorded cohort with its immutable
+Compose-capable CLI canary. Current product reruns can omit `--cli-version` to
+select the released v1.16.3 CLI. Compose owns image materialization, so the
+harness input remains `none` even though the measured lifecycle builds and
+loads the local service image before startup.
 
 ```bash
 ./scripts/dispatch-proof-series.sh \

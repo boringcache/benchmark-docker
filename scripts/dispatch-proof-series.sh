@@ -18,6 +18,7 @@ include_rolling_bootstrap="true"
 wait_for_runs="true"
 dry_run="false"
 warm_replay="false"
+watch_interval_seconds="${GH_RUN_WATCH_INTERVAL_SECONDS:-60}"
 rust_target_cache="false"
 compare_rust_target="false"
 rolling_refs=()
@@ -41,7 +42,7 @@ Options:
   --rolling-bootstrap-ref REF_KEY Ref key for rolling bootstrap (default: main)
   --rolling-ref REF_KEY           Add one rolling ref key; repeatable
   --rolling-refs A,B,C            Add comma-separated rolling ref keys
-  --build-output MODE             none, load, or local-registry (default: none)
+  --build-output MODE             none, load, local-registry, or ghcr (default: none)
   --lane-filter FILTER            all, buildkit, gha-buildkit, or registry-buildkit (default: all)
   --cache-scope-suffix SUFFIX     Isolate the stable rolling cache scope
   --cli-version TAG               Exact CLI release or immutable canary tag
@@ -172,7 +173,7 @@ if [[ -z "$case_id" ]]; then
 fi
 
 case "$build_output" in
-  none | load | local-registry)
+  none | load | local-registry | ghcr)
     ;;
   *)
     echo "Unsupported build output: $build_output" >&2
@@ -243,10 +244,10 @@ wait_for_run() {
       # A Docker proof can run for well over ten minutes. The gh default polls
       # every three seconds, which can exhaust the authenticated REST quota
       # during a multi-commit series.
-      gh run watch "$run_id" --repo "$repo" --exit-status --interval 30
+      gh run watch "$run_id" --repo "$repo" --exit-status --interval "$watch_interval_seconds"
       return 0
     fi
-    sleep 5
+    sleep "$watch_interval_seconds"
   done
 
   echo "Could not find dispatched run for ${title_prefix}" >&2

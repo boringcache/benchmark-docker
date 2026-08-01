@@ -1,0 +1,27 @@
+{
+  "id": "biar-jupyterhub",
+  "source": {
+    "repo": "tazama-lf/biar",
+    "pain_url": "https://github.com/tazama-lf/biar/issues/142",
+    "evidence_run": "https://github.com/tazama-lf/biar/actions/runs/30026601442",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "6d18d74dd184bb43fc4cf8e24313cd0fc5370f17",
+    "seed": "e0d9e963abe2f4823896b3dd7ff13eb12b9c4fb3",
+    "rolling1": "cdb443798678d94965b28250b2867e2c6d2c754e",
+    "rolling2": "d56b85440bcd58ef367e66bd44f7ebaee84f7760",
+    "rolling3": "05e55ee52f84b71cb093e7c1948ca1b1a04fc0a2",
+    "rolling4": "657ad9487e61a519b13bacbe20a3acbb7121316a"
+  },
+  "docker": {
+    "context": "JupyterHub",
+    "dockerfile": "JupyterHub/Dockerfile",
+    "image": "biar-jupyterhub",
+    "platform": "linux/amd64",
+    "original_cache": "none in the painful run; current main uses type=gha,mode=min,scope=jupyterhub"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

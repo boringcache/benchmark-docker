@@ -269,7 +269,7 @@ jobs:
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+          buildkit_image: ${{ inputs.buildkit_image || 'mirror.gcr.io/moby/buildkit:buildx-stable-1' }}
           registry_cache_ref: ghcr.io/${{ github.repository_owner }}/docker-cache-proof-${{ needs.case.outputs.case_id }}
           registry_package_owner: ${{ github.repository_owner }}
           registry_package_name: docker-cache-proof-${{ needs.case.outputs.case_id }}

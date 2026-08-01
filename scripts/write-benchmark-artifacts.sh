@@ -1136,7 +1136,7 @@ collect_default_product_refs() {
   fi
 
   if [[ -z "$action_ref" && "$strategy" == "boringcache" ]]; then
-    action_ref="boringcache/one@8294be671cd5a2b73638df1b8e1e240df888297e"
+    action_ref="boringcache/one@95fa333f602bbcf131274118e6f025650912fba0"
   fi
 
   if [[ -z "$action_sha" && "$action_ref" =~ ^([^@]+)@(.+)$ ]]; then

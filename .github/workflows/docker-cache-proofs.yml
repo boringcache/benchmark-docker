@@ -134,10 +134,22 @@ jobs:
       rust_target_cache_id_pattern: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
       native_matrix: ${{ steps.case.outputs.native_matrix }}
       native_matrix_enabled: ${{ steps.case.outputs.native_matrix_enabled }}
+      cache_scope_suffix: ${{ steps.scope-suffix.outputs.value }}
     steps:
       - uses: actions/checkout@v6
       - id: case
         run: ./scripts/emit-case-outputs.sh "${{ inputs.case_id }}" "${{ inputs.ref_key }}" "${{ inputs.build_output }}"
+      - id: scope-suffix
+        name: Normalize the optional cache scope suffix
+        env:
+          REQUESTED_SUFFIX: ${{ inputs.cache_scope_suffix }}
+        run: |
+          suffix="${REQUESTED_SUFFIX#-}"
+          if [[ -n "$suffix" ]]; then
+            echo "value=-${suffix}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
       - name: Require a declared Rust target cache mount
         if: ${{ inputs.rust_target_cache }}
         env:
@@ -183,7 +195,7 @@ jobs:
           cache_lane: ${{ inputs.cache_lane }}
           benchmark_id: ${{ format('{0}{1}-gha', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
           cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
@@ -238,7 +250,7 @@ jobs:
           cache_lane: ${{ inputs.cache_lane }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}-ghcr
           cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, needs.case.outputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
@@ -300,7 +312,7 @@ jobs:
           cache_lane: ${{ inputs.cache_lane }}
           benchmark_id: ${{ format('{0}{1}-bc', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
           cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
@@ -367,7 +379,7 @@ jobs:
           cache_lane: ${{ inputs.cache_lane }}
           benchmark_id: ${{ format('{0}-{1}{2}-bc', needs.case.outputs.benchmark_id, matrix.arch, inputs.rust_target_cache && '-target' || '') }}
           cache_id: ${{ format('{0}-{1}', needs.case.outputs.cache_id, matrix.arch) }}
-          cache_scope_suffix: ${{ format('-{0}-{1}{2}{3}', needs.case.outputs.case_id, matrix.arch, inputs.rust_target_cache && '-target' || '', inputs.cache_scope_suffix) }}
+          cache_scope_suffix: ${{ format('-{0}-{1}{2}{3}', needs.case.outputs.case_id, matrix.arch, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}

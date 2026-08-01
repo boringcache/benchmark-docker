@@ -15,29 +15,36 @@ ARG PROFILE=release
 ARG TARGETPLATFORM
 ARG LIBC=musl
 ARG IGGY_CI_BUILD
-ARG SCCACHE_VERSION=v0.14.0
+ARG SCCACHE_VERSION=v0.17.0
+ARG SCCACHE_SHA256_AMD64=67c4a96dd237c1f518f6b36083f270f9976d516f1e57fce891755ea782e50006
+ARG SCCACHE_SHA256_ARM64=821a86343191aa1cbab74bd42f9e93c9a63bf85e4742945f40d3ae84193c1c77
 ENV IGGY_CI_BUILD=${IGGY_CI_BUILD}
 ENV CARGO_INCREMENTAL=0
 
-RUN apk add --no-cache bash curl tar zig make autoconf automake libtool pkgconfig hwloc-dev xz-dev xz-static nodejs npm && \
+RUN set -eux; \
+    apk add --no-cache bash curl tar; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      x86_64) sccache_arch="x86_64"; sccache_sha256="$SCCACHE_SHA256_AMD64" ;; \
+      aarch64) sccache_arch="aarch64"; sccache_sha256="$SCCACHE_SHA256_ARM64" ;; \
+      *) echo "unsupported sccache architecture: ${arch}" >&2; exit 1 ;; \
+    esac; \
+    archive="/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz"; \
+    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz" -o "$archive"; \
+    echo "${sccache_sha256}  ${archive}" | sha256sum -c -; \
+    tar xzf "$archive" -C /tmp; \
+    mv "/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl/sccache" /usr/local/bin/sccache; \
+    rm -f "$archive"; \
+    chmod +x /usr/local/bin/sccache; \
+    sccache --version
+
+RUN apk add --no-cache zig make autoconf automake libtool pkgconfig hwloc-dev xz-dev xz-static nodejs npm && \
     cargo install cargo-zigbuild --version '=0.22.1' --locked && \
     rustup target add \
     x86_64-unknown-linux-musl \
     aarch64-unknown-linux-musl \
     x86_64-unknown-linux-gnu \
     aarch64-unknown-linux-gnu
-
-RUN set -eux; \
-    arch="$(uname -m)"; \
-    case "$arch" in \
-      x86_64) sccache_arch="x86_64" ;; \
-      aarch64) sccache_arch="aarch64" ;; \
-      *) echo "unsupported sccache architecture: ${arch}" >&2; exit 1 ;; \
-    esac; \
-    curl -fsSL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl.tar.gz" | tar xz -C /tmp; \
-    mv "/tmp/sccache-${SCCACHE_VERSION}-${sccache_arch}-unknown-linux-musl/sccache" /usr/local/bin/sccache; \
-    chmod +x /usr/local/bin/sccache; \
-    sccache --version
 
 ENV PKG_CONFIG_ALLOW_CROSS=1
 

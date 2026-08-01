@@ -8,9 +8,9 @@ inputs:
     required: false
     default: fresh
   buildkit_image:
-    description: Managed BoringCache BuildKit image.
+    description: Optional managed BoringCache BuildKit image override for reviewed canaries.
     required: false
-    default: ghcr.io/boringcache/buildkit:v0.30.0-bc
+    default: ''
   benchmark_id:
     required: true
   cache_id:

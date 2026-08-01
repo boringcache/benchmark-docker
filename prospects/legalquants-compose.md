@@ -72,8 +72,9 @@ short enough to repeat. Unchanged-component checkpoints are useful: they show
 whether the remote cache can restore a large image when only the other service
 changed.
 
-Compose support is currently a CLI canary feature. Pin the immutable canary so
-the proof does not change underneath the rolling series:
+The commands below reproduce the recorded cohort with its immutable Compose
+canary. Current product reruns can omit `--cli-version` to select the released
+v1.16.3 CLI:
 
 ```sh
 ./scripts/dispatch-proof-series.sh \

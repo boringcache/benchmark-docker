@@ -33,7 +33,7 @@ upstream build shape:
   and ODELIA model-weight inputs prepared by the upstream scripts; and
 - an explicit `docker builder prune -af` before each measured build.
 
-The CLI canary normalizes the classic command onto its disposable managed
+The recorded CLI canary normalized the classic command onto its disposable managed
 BuildKit builder and preserves the classic local-image output. The cache lives
 remotely under the per-image tag, so deleting the local builder does not delete
 the next run's reusable layers.
@@ -47,9 +47,9 @@ rebuilds.
 
 ## Run it
 
-Use a new suffix so no older proof can seed the series. The Docker build-family
-support is currently on the CLI canary, so the proof must pin that exact channel
-until the signed release containing it is available.
+Use a new suffix so no older proof can seed the series. The command below
+reproduces the recorded cohort with its exact canary. Current product reruns can
+omit `--cli-version` to select the released v1.16.3 CLI.
 
 ```bash
 for case_id in mediswarm-odelia mediswarm-stamp; do

@@ -136,10 +136,52 @@ def summarize(events: list[dict[str, Any]], cache_id_pattern: str) -> dict[str, 
             f"No BuildKit cache-mount events matched {cache_id_pattern!r}"
         )
 
+    mounts = [summarize_mount(events, cache_id) for cache_id in cache_ids]
+    previous_values = [mount["previous_compressed_bytes"] for mount in mounts]
+    current_values = [mount["current_compressed_bytes"] for mount in mounts]
+    uncompressed_values = [mount["current_uncompressed_bytes"] for mount in mounts]
+    file_values = [mount["current_files"] for mount in mounts]
+
+    previous_bytes = total_if_complete(previous_values)
+    current_bytes = total_if_complete(current_values)
+    compressed_delta = None
+    classification = "seeded"
+    if any(value is not None for value in previous_values) and previous_bytes is None:
+        classification = "partial"
+    elif previous_bytes is not None and current_bytes is not None:
+        compressed_delta = current_bytes - previous_bytes
+        stable_limit = max(1024 * 1024, round(previous_bytes * 0.001))
+        if abs(compressed_delta) <= stable_limit:
+            classification = "stable"
+        elif compressed_delta > 0:
+            classification = "growing"
+        else:
+            classification = "shrinking"
+
+    return {
+        "schema_version": "rust_target_mount_growth.v1",
+        "cache_id_pattern": cache_id_pattern,
+        "cache_ids": cache_ids,
+        "classification": classification,
+        "previous_compressed_bytes": previous_bytes,
+        "current_compressed_bytes": current_bytes,
+        "compressed_bytes_delta": compressed_delta,
+        "current_uncompressed_bytes": total_if_complete(uncompressed_values),
+        "current_files": total_if_complete(file_values),
+        "publish_complete": all(mount["publish_complete"] for mount in mounts),
+        "mounts": mounts,
+        "events": events,
+    }
+
+
+def summarize_mount(
+    events: list[dict[str, Any]], cache_id: str
+) -> dict[str, Any]:
+    mount_events = [event for event in events if event["cache_id"] == cache_id]
     previous = next(
         (
             event
-            for event in reversed(events)
+            for event in reversed(mount_events)
             if event["phase"] == "hydrate" and event["status"] == "hit"
         ),
         None,
@@ -147,7 +189,7 @@ def summarize(events: list[dict[str, Any]], cache_id_pattern: str) -> dict[str, 
     archive_built = next(
         (
             event
-            for event in reversed(events)
+            for event in reversed(mount_events)
             if event["phase"] == "publish" and event["status"] == "archive_built"
         ),
         None,
@@ -155,25 +197,27 @@ def summarize(events: list[dict[str, Any]], cache_id_pattern: str) -> dict[str, 
     published = next(
         (
             event
-            for event in reversed(events)
+            for event in reversed(mount_events)
             if event["phase"] == "publish" and event["status"] == "published"
         ),
         None,
     )
-    current = archive_built or published
     no_write = any(
         event["phase"] == "publish"
         and event["status"] == "skip"
         and event.get("reason") in {"no_writes", "unchanged_archive"}
-        for event in events
+        for event in mount_events
     )
+    if published is None and not (previous is not None and no_write):
+        raise ValueError(
+            f"Cache mount {cache_id!r} did not complete a publish or stable "
+            "no-write lifecycle"
+        )
 
+    current = archive_built or published or previous
     previous_bytes = previous.get("compressedBytes") if previous else None
     current_bytes = current.get("compressedBytes") if current else None
     compressed_delta = None
-    if published is None and not (previous is not None and no_write):
-        raise ValueError("Cache mount did not complete a publish or stable no-write lifecycle")
-
     classification = "seeded"
     if previous_bytes is not None and current_bytes is not None:
         compressed_delta = current_bytes - previous_bytes
@@ -184,14 +228,9 @@ def summarize(events: list[dict[str, Any]], cache_id_pattern: str) -> dict[str, 
             classification = "growing"
         else:
             classification = "shrinking"
-    elif previous_bytes is not None and no_write:
-        compressed_delta = 0
-        classification = "stable"
 
     return {
-        "schema_version": "rust_target_mount_growth.v1",
-        "cache_id_pattern": cache_id_pattern,
-        "cache_ids": cache_ids,
+        "cache_id": cache_id,
         "classification": classification,
         "previous_compressed_bytes": previous_bytes,
         "current_compressed_bytes": current_bytes,
@@ -201,8 +240,14 @@ def summarize(events: list[dict[str, Any]], cache_id_pattern: str) -> dict[str, 
         ),
         "current_files": current.get("files") if current else None,
         "publish_complete": published is not None,
-        "events": events,
+        "no_write": no_write,
     }
+
+
+def total_if_complete(values: list[int | None]) -> int | None:
+    if any(value is None for value in values):
+        return None
+    return sum(value for value in values if value is not None)
 
 
 def parse_args() -> argparse.Namespace:

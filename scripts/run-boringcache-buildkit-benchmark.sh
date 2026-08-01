@@ -195,18 +195,30 @@ parse_tool_cache_args() {
 }
 
 write_sccache_stats_from_build_log() {
-  grep -q 'BEGIN_BORINGCACHE_SCCACHE_STATS' "$build_log" || return 0
+  grep -q 'Compile requests' "$build_log" || return 0
 
   mkdir -p benchmark-native-tool
   awk '
-    /BEGIN_BORINGCACHE_SCCACHE_STATS/ { capture = 1; next }
-    /END_BORINGCACHE_SCCACHE_STATS/ { capture = 0 }
-    capture {
+    {
       sub(/^#[0-9]+[[:space:]]+[0-9.]+[[:space:]]+/, "")
       sub(/^#[0-9]+[[:space:]]+/, "")
-      print
     }
-  ' "$build_log" | sed '/^[[:space:]]*$/d' > benchmark-native-tool/sccache-stats.txt
+    /^Compile requests[[:space:]]+[0-9]+[[:space:]]*$/ {
+      block = $0 ORS
+      capture = 1
+      next
+    }
+    capture {
+      block = block $0 ORS
+      if (/^Version \(client\)[[:space:]]/) {
+        completed = block
+        capture = 0
+      }
+    }
+    END {
+      printf "%s", completed
+    }
+  ' "$build_log" > benchmark-native-tool/sccache-stats.txt
 
   if ! grep -q 'Compile requests' benchmark-native-tool/sccache-stats.txt; then
     rm -f benchmark-native-tool/sccache-stats.txt
@@ -540,7 +552,7 @@ while true; do
     load)
       output_args+=(--load)
       ;;
-    local-registry)
+    local-registry|ghcr)
       output_args+=(--push)
       ;;
     *)

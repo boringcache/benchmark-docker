@@ -322,7 +322,7 @@ jobs:
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+          buildkit_image: ${{ inputs.buildkit_image }}
 
   boringcache-native:
     name: BoringCache + toolcache (${{ matrix.arch }})
@@ -386,7 +386,7 @@ jobs:
           cli_platform: ${{ matrix.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
           setup_qemu: 'false'
-          buildkit_image: ${{ inputs.buildkit_image || vars.DOCKER_CACHE_PROOFS_BUILDKIT_IMAGE || vars.DOCKER_CACHE_PROOFS_PREWARM_BUILDKIT_IMAGE || 'ghcr.io/boringcache/buildkit:v0.30.0-bc' }}
+          buildkit_image: ${{ inputs.buildkit_image }}
 
   publish-native-manifest:
     name: Publish native multi-arch manifest

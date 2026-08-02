@@ -51,17 +51,24 @@ if [[ "$ref_key" =~ ^[0-9a-f]{40}$ ]]; then
   benchmark_ref="${ref_key:0:12}"
 fi
 project_repo="$(jq -er '.source.repo' "$case_file")"
+cache_id="$(jq -r --arg fallback "$case_id" '.docker.cache_id // $fallback' "$case_file")"
 build_family="$(jq -r '.docker.build_family // "buildx-build"' "$case_file")"
 dockerfile="$(jq -r '.docker.dockerfile // ""' "$case_file")"
 context="$(jq -r '.docker.context // "."' "$case_file")"
 image="$(jq -er '.docker.image' "$case_file")"
 bake_file="$(jq -r '.docker.bake_file // ""' "$case_file")"
 bake_group="$(jq -r '.docker.bake_group // ""' "$case_file")"
+compose_file="$(jq -r '.docker.compose_file // ""' "$case_file")"
+compose_command="$(jq -r '.docker.compose_command[]?' "$case_file")"
+compose_prepare_command="$(jq -r '.docker.compose_prepare_command // ""' "$case_file")"
+compose_host_user="$(jq -r '.docker.compose_host_user // false' "$case_file")"
+compose_success_service="$(jq -r '.docker.compose_success_service // ""' "$case_file")"
 expected_images="$(jq -r '.docker.expected_images[]?' "$case_file")"
 cli_version="$(jq -r '.workflow.cli_version // ""' "$case_file")"
 runner_label="$(jq -r '.workflow.runner_label // "ubuntu-latest"' "$case_file")"
 cli_platform="$(jq -r '.workflow.cli_platform // "linux-amd64"' "$case_file")"
 free_disk_space="$(jq -r '.workflow.free_disk_space // false' "$case_file")"
+prune_builder="$(jq -r '.workflow.prune_builder // false' "$case_file")"
 setup_qemu="$(jq -r '.workflow.setup_qemu // false' "$case_file")"
 docker_tool_cache="$(jq -r '.docker.tool_cache // ""' "$case_file")"
 rust_target_cache_kind="$(jq -r '.docker.rust_target_cache.kind // ""' "$case_file")"
@@ -72,15 +79,25 @@ source_path=".work/${case_id}/source"
 image_tag="cache-proof/${image}:${ref_key}-${GITHUB_RUN_ID:-local}"
 
 case "$build_family" in
-  buildx-build)
+  buildx-build|classic-build)
     if [[ -z "$dockerfile" ]]; then
-      echo "docker.dockerfile is required for buildx-build case ${case_id}" >&2
+      echo "docker.dockerfile is required for ${build_family} case ${case_id}" >&2
+      exit 1
+    fi
+    if [[ "$build_family" == "classic-build" && "$build_output" != "load" ]]; then
+      echo "classic-build case ${case_id} requires build_output=load to preserve the upstream local-image contract" >&2
       exit 1
     fi
     ;;
   bake)
     if [[ -z "$bake_file" || -z "$bake_group" ]]; then
       echo "docker.bake_file and docker.bake_group are required for Bake case ${case_id}" >&2
+      exit 1
+    fi
+    ;;
+  compose)
+    if [[ -z "$compose_file" || -z "$compose_command" ]]; then
+      echo "docker.compose_file and docker.compose_command are required for Compose case ${case_id}" >&2
       exit 1
     fi
     ;;
@@ -115,7 +132,7 @@ extra_args="$(
 write_output "case_id" "$case_id"
 write_output "case_ref_key" "$ref_key"
 write_output "benchmark_id" "${case_id}-${benchmark_ref}"
-write_output "cache_id" "$case_id"
+write_output "cache_id" "$cache_id"
 write_output "project_repo" "$project_repo"
 write_output "project_ref" "$project_ref"
 write_output "docker_build_family" "$build_family"
@@ -124,12 +141,18 @@ write_output "dockerfile_path" "${dockerfile:+${source_path}/${dockerfile}}"
 write_output "docker_context" "${source_path}/${context}"
 write_output "docker_bake_file" "$bake_file"
 write_output "docker_bake_group" "$bake_group"
+write_output "docker_compose_file" "$compose_file"
+write_multiline_output "docker_compose_command" "$compose_command"
+write_multiline_output "docker_compose_prepare_command" "$compose_prepare_command"
+write_output "docker_compose_host_user" "$compose_host_user"
+write_output "docker_compose_success_service" "$compose_success_service"
 write_multiline_output "docker_expected_images" "$expected_images"
 write_output "cli_version" "$cli_version"
 write_output "image_tag" "$image_tag"
 write_output "runner_label" "$runner_label"
 write_output "cli_platform" "$cli_platform"
 write_output "free_disk_space" "$free_disk_space"
+write_output "prune_builder" "$prune_builder"
 write_output "setup_qemu" "$setup_qemu"
 write_multiline_output "docker_tool_cache" "$docker_tool_cache"
 write_output "rust_target_cache_kind" "$rust_target_cache_kind"

@@ -1,0 +1,37 @@
+{
+  "id": "mae-headless-e2e-tool-cache",
+  "source": {
+    "repo": "cuttlefisch/mae",
+    "pain_url": "https://github.com/cuttlefisch/mae/issues/490",
+    "evidence_run": "https://github.com/cuttlefisch/mae/actions/runs/30300856171/job/90093191038",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "e46d77e183acdb3b14ed0cb9b4e3b6918c5ee876",
+    "issue": "3b5d29b75cfab0b1bc744a0b0af27bc15ba14742",
+    "seed": "2d97d3bcd95a2166e4fd0a2e5d147bdb0b149c60",
+    "rolling1": "62f89ce78a4a841bd7298a941a52504b58175559",
+    "rolling2": "8e71f85c30f2caf18a3f1f1489512f75380e926b",
+    "rolling3": "631a702e2ec84f4432778cfdf2f4d88fd9291022",
+    "rolling4": "e46d77e183acdb3b14ed0cb9b4e3b6918c5ee876"
+  },
+  "docker": {
+    "build_family": "compose",
+    "dockerfile": "Dockerfile",
+    "overlay_dockerfile": "overlays/mae-tool-cache/Dockerfile",
+    "compose_file": "docker-compose.headless-e2e.yml",
+    "compose_command": [
+      "up",
+      "--build",
+      "--wait"
+    ],
+    "compose_success_service": "verifier",
+    "image": "mae-headless-e2e-tool-cache",
+    "tool_cache": "sccache:{CACHE_SCOPE}-sccache",
+    "rust_target_cache": {
+      "kind": "buildkit-cache-mount",
+      "id_pattern": "^/?mae-cargo-target-"
+    },
+    "original_cache": "MAE Compose command with the proof's BoringCache sccache tool cache and persistent Cargo cache-mount Dockerfile overlay"
+  }
+}

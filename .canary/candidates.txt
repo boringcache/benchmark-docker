@@ -6,4 +6,7 @@ phentrieve-api release fresh
 wormhole-solana main fresh
 nmisp-nightly main fresh
 kvrocks-docker main fresh
+mediswarm-odelia main rolling load
+mediswarm-stamp main rolling load
 mozilla-experimenter issue fresh load
+vilnacrm-bootstrap-infrastructure main fresh

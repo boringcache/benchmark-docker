@@ -36,13 +36,13 @@ inputs:
   dockerfile_path:
     required: false
     default: ".work/source/Dockerfile"
+  docker_build_family:
+    description: Docker command family used by the upstream build (buildx-build, classic-build, bake, or compose).
+    required: false
+    default: buildx-build
   docker_context:
     required: false
     default: ".work/source"
-  docker_build_family:
-    description: Docker build family selected by the case (buildx-build or bake).
-    required: false
-    default: buildx-build
   docker_working_directory:
     description: Prepared upstream directory used for Bake project discovery.
     required: false
@@ -53,6 +53,26 @@ inputs:
     default: ''
   docker_bake_group:
     description: Bake group or target selection exercised by the case.
+    required: false
+    default: ''
+  docker_compose_file:
+    description: Compose definition path relative to docker_working_directory.
+    required: false
+    default: ''
+  docker_compose_command:
+    description: Newline-separated Compose command arguments after `docker compose --file FILE`.
+    required: false
+    default: ''
+  docker_compose_prepare_command:
+    description: Optional upstream preparation command run immediately before the measured Compose lifecycle.
+    required: false
+    default: ''
+  docker_compose_host_user:
+    description: Export the runner UID, GID, and USER for Compose interpolation, matching upstream Make wrappers.
+    required: false
+    default: 'false'
+  docker_compose_success_service:
+    description: Optional completed service whose zero exit code makes `compose up --wait` successful, matching the upstream lifecycle wrapper.
     required: false
     default: ''
   docker_expected_images:
@@ -103,6 +123,10 @@ inputs:
     description: Reclaim runner disk before the Docker build. Useful for large real-world Docker images that can exhaust hosted-runner space mid-build.
     required: false
     default: 'false'
+  prune_builder:
+    description: Remove the local Docker builder cache before the measured build.
+    required: false
+    default: 'false'
   setup_qemu:
     description: Register QEMU binfmt handlers for an upstream multi-platform build.
     required: false
@@ -125,14 +149,29 @@ runs:
       DOCKER_WORKING_DIRECTORY: "${{ inputs.docker_working_directory }}"
       DOCKER_BAKE_FILE: "${{ inputs.docker_bake_file }}"
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
+      DOCKER_COMPOSE_FILE: "${{ inputs.docker_compose_file }}"
+      DOCKER_COMPOSE_COMMAND: "${{ inputs.docker_compose_command }}"
+      DOCKER_COMPOSE_HOST_USER: "${{ inputs.docker_compose_host_user }}"
+      DOCKER_COMPOSE_SUCCESS_SERVICE: "${{ inputs.docker_compose_success_service }}"
+      BUILD_OUTPUT: "${{ inputs.build_output }}"
     run: |
       set -euo pipefail
       case "$DOCKER_BUILD_FAMILY" in
-        buildx-build) ;;
+        buildx-build|classic-build) ;;
         bake)
           [[ -n "$DOCKER_WORKING_DIRECTORY" ]]
           [[ -n "$DOCKER_BAKE_FILE" ]]
           [[ -n "$DOCKER_BAKE_GROUP" ]]
+          ;;
+        compose)
+          [[ -n "$DOCKER_WORKING_DIRECTORY" ]]
+          [[ -n "$DOCKER_COMPOSE_FILE" ]]
+          [[ -n "$DOCKER_COMPOSE_COMMAND" ]]
+          [[ "$DOCKER_COMPOSE_HOST_USER" == "true" || "$DOCKER_COMPOSE_HOST_USER" == "false" ]]
+          [[ "$BUILD_OUTPUT" == "none" ]] || {
+            echo "Compose owns its image and container outputs; use build_output=none." >&2
+            exit 1
+          }
           ;;
         *) echo "Unknown Docker build family: $DOCKER_BUILD_FAMILY" >&2; exit 1 ;;
       esac
@@ -154,6 +193,10 @@ runs:
       sudo docker system prune --all --volumes --force
       df -h /
       docker system df || true
+    shell: bash
+  - name: Prune local Docker builder cache
+    if: "${{ inputs.prune_builder == 'true' }}"
+    run: docker builder prune -af
     shell: bash
   - name: Validate BoringCache secrets
     if: "${{ inputs.strategy == 'boringcache' }}"
@@ -345,12 +388,17 @@ runs:
       BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: "${{ inputs.strategy == 'boringcache' && inputs.rust_target_cache == 'true' && '1' || '' }}"
       ALLOW_BORINGCACHE_ROLLING_BOOTSTRAP: "${{ inputs.cache_lane == 'rolling' && 'true' || '' }}"
       IMAGE_TAG: "${{ inputs.image_tag }}"
+      DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
       DOCKERFILE_PATH: "${{ inputs.dockerfile_path }}"
       BENCHMARK_DOCKER_CONTEXT: "${{ inputs.docker_context }}"
-      DOCKER_BUILD_FAMILY: "${{ inputs.docker_build_family }}"
       BENCHMARK_DOCKER_WORKING_DIRECTORY: "${{ inputs.docker_working_directory }}"
       DOCKER_BAKE_FILE: "${{ inputs.docker_bake_file }}"
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
+      DOCKER_COMPOSE_FILE: "${{ inputs.docker_compose_file }}"
+      DOCKER_COMPOSE_COMMAND: "${{ inputs.docker_compose_command }}"
+      DOCKER_COMPOSE_PREPARE_COMMAND: "${{ inputs.docker_compose_prepare_command }}"
+      DOCKER_COMPOSE_HOST_USER: "${{ inputs.docker_compose_host_user }}"
+      DOCKER_COMPOSE_SUCCESS_SERVICE: "${{ inputs.docker_compose_success_service }}"
       DOCKER_TOOL_CACHE: "${{ inputs.docker_tool_cache }}"
       GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"
       REGISTRY_CACHE_REF: "${{ inputs.registry_cache_ref }}"

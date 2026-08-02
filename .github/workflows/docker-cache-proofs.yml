@@ -34,6 +34,7 @@ on:
           - iggy-rust-server-sccache
           - cloudcost-exporter-amd64
           - cloudcost-exporter-amd64-go
+          - posit-connect-content-amd64
           - tiled-container-canary
           - proteus-controller-multiarch
           - kvrocks-docker

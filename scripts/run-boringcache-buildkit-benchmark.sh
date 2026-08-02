@@ -22,6 +22,8 @@ docker_bake_file="${DOCKER_BAKE_FILE:-}"
 docker_bake_group="${DOCKER_BAKE_GROUP:-}"
 docker_compose_file="${DOCKER_COMPOSE_FILE:-}"
 docker_compose_command="${DOCKER_COMPOSE_COMMAND:-}"
+docker_compose_prepare_command="${DOCKER_COMPOSE_PREPARE_COMMAND:-}"
+docker_compose_host_user="${DOCKER_COMPOSE_HOST_USER:-false}"
 docker_compose_success_service="${DOCKER_COMPOSE_SUCCESS_SERVICE:-}"
 resolved_cache_tags_csv=""
 export BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS="${BORINGCACHE_OBSERVABILITY_INCLUDE_CACHE_OPS:-1}"
@@ -453,6 +455,27 @@ run_wrapped_boringcache_build() {
     --fail-on-cache-error
   )
   boringcache_args+=("${tool_cache_args[@]}")
+
+  if [[ "$docker_build_family" == "compose" ]]; then
+    local platform_arg
+    for platform_arg in "${extra_args[@]}"; do
+      if [[ "$platform_arg" == --platform=* ]]; then
+        export DOCKER_DEFAULT_PLATFORM="${platform_arg#--platform=}"
+      fi
+    done
+    if [[ "$docker_compose_host_user" == "true" ]]; then
+      export UID
+      GID="$(id -g)"
+      export GID
+      export USER="${USER:-$(id -un)}"
+    fi
+    if [[ -n "$docker_compose_prepare_command" ]]; then
+      (
+        cd "$docker_working_directory"
+        bash -euo pipefail -c "$docker_compose_prepare_command"
+      )
+    fi
+  fi
 
   local wrapped_cache_args=()
   local cache_arg

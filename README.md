@@ -115,5 +115,6 @@ Each run uploads machine-readable JSON and Markdown summaries using the same art
 - [Mozilla Experimenter Bake proof](prospects/mozilla-experimenter.md)
 - [MAE Docker Compose proof](prospects/mae-compose.md)
 - [LegalQuants lq-ai Docker Compose proof](prospects/legalquants-compose.md)
+- [VilnaCRM Compose proof](prospects/vilnacrm-compose.md)
 - [Blockscout frontend proof](prospects/blockscout-frontend.md)
 - [terraform-aws-cli matrix proof](prospects/terraform-aws-cli.md)

@@ -7,3 +7,4 @@ wormhole-solana main fresh
 nmisp-nightly main fresh
 kvrocks-docker main fresh
 mozilla-experimenter issue fresh load
+vilnacrm-bootstrap-infrastructure main fresh

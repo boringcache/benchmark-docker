@@ -63,6 +63,14 @@ inputs:
     description: Newline-separated Compose command arguments after `docker compose --file FILE`.
     required: false
     default: ''
+  docker_compose_prepare_command:
+    description: Optional upstream preparation command run immediately before the measured Compose lifecycle.
+    required: false
+    default: ''
+  docker_compose_host_user:
+    description: Export the runner UID, GID, and USER for Compose interpolation, matching upstream Make wrappers.
+    required: false
+    default: 'false'
   docker_compose_success_service:
     description: Optional completed service whose zero exit code makes `compose up --wait` successful, matching the upstream lifecycle wrapper.
     required: false
@@ -139,6 +147,7 @@ runs:
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
       DOCKER_COMPOSE_FILE: "${{ inputs.docker_compose_file }}"
       DOCKER_COMPOSE_COMMAND: "${{ inputs.docker_compose_command }}"
+      DOCKER_COMPOSE_HOST_USER: "${{ inputs.docker_compose_host_user }}"
       DOCKER_COMPOSE_SUCCESS_SERVICE: "${{ inputs.docker_compose_success_service }}"
       BUILD_OUTPUT: "${{ inputs.build_output }}"
     run: |
@@ -154,6 +163,7 @@ runs:
           [[ -n "$DOCKER_WORKING_DIRECTORY" ]]
           [[ -n "$DOCKER_COMPOSE_FILE" ]]
           [[ -n "$DOCKER_COMPOSE_COMMAND" ]]
+          [[ "$DOCKER_COMPOSE_HOST_USER" == "true" || "$DOCKER_COMPOSE_HOST_USER" == "false" ]]
           [[ "$BUILD_OUTPUT" == "none" ]] || {
             echo "Compose owns its image and container outputs; use build_output=none." >&2
             exit 1
@@ -378,6 +388,8 @@ runs:
       DOCKER_BAKE_GROUP: "${{ inputs.docker_bake_group }}"
       DOCKER_COMPOSE_FILE: "${{ inputs.docker_compose_file }}"
       DOCKER_COMPOSE_COMMAND: "${{ inputs.docker_compose_command }}"
+      DOCKER_COMPOSE_PREPARE_COMMAND: "${{ inputs.docker_compose_prepare_command }}"
+      DOCKER_COMPOSE_HOST_USER: "${{ inputs.docker_compose_host_user }}"
       DOCKER_COMPOSE_SUCCESS_SERVICE: "${{ inputs.docker_compose_success_service }}"
       DOCKER_TOOL_CACHE: "${{ inputs.docker_tool_cache }}"
       GITHUB_TOKEN: "${{ env.GITHUB_TOKEN }}"

@@ -20,6 +20,8 @@ on:
           - mae-collab-e2e-tool-cache
           - mae-headless-e2e
           - mae-headless-e2e-tool-cache
+          - legalquants-gateway-web
+          - legalquants-api
           - vilnacrm-bootstrap-infrastructure
           - mozilla-experimenter
           - phentrieve-api

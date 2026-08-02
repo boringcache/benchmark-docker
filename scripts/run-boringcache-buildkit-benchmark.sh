@@ -375,6 +375,18 @@ prepare_build_command() {
       build_command+=("${output_args[@]}")
       build_command+=("$BENCHMARK_DOCKER_CONTEXT")
       ;;
+    classic-build)
+      build_command=(
+        docker build
+        --file "$DOCKERFILE_PATH"
+        --tag "$IMAGE_TAG"
+        --progress=plain
+      )
+      build_command+=("${extra_args[@]}")
+      build_command+=("${wrapped_cache_args[@]}")
+      build_command+=("${output_args[@]}")
+      build_command+=("$BENCHMARK_DOCKER_CONTEXT")
+      ;;
     bake)
       [[ -n "$docker_working_directory" ]] || { echo "BENCHMARK_DOCKER_WORKING_DIRECTORY is required for Bake" >&2; return 1; }
       [[ -n "$docker_bake_file" ]] || { echo "DOCKER_BAKE_FILE is required for Bake" >&2; return 1; }

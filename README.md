@@ -97,9 +97,15 @@ CLI manages the builder and uses the native `type=boringcache` exporter.
 
 ## Prospect Reports
 
+- [MediSwarm classic Docker cache proof](prospects/mediswarm-classic-build.md)
+  tests ODELIA and STAMP as separate remote caches across builder pruning and
+  five consecutive upstream source transitions.
 - [Grafana Cloud Cost Exporter Docker and Go cache proof](prospects/cloudcost-exporter.md)
   compares GitHub Actions Cache, BoringCache Docker, and BoringCache Docker + Go
   across five consecutive upstream source transitions.
+- [Bluesky Tiled multi-platform container proof](prospects/tiled-container-canary.md)
+  isolates the first rolling image build from Tiled's later same-job cache
+  overwrite and compares cache transport across four upstream transitions.
 
 ## Workflows
 

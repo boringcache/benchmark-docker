@@ -1,6 +1,6 @@
 name: Docker Benchmark
 run-name: >-
-  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off') }}
+  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4} | dispatch={5}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off', inputs.dispatch_token) }}
 
 on:
   workflow_dispatch:
@@ -14,6 +14,17 @@ on:
           - biar-datalakehouse-api
           - biar-jupyterhub
           - blockscout-frontend
+          - mae-containers
+          - mae-containers-tool-cache
+          - mae-collab-e2e
+          - mae-collab-e2e-tool-cache
+          - mae-headless-e2e
+          - mae-headless-e2e-tool-cache
+          - legalquants-gateway-web
+          - legalquants-api
+          - vilnacrm-bootstrap-infrastructure
+          - mediswarm-odelia
+          - mediswarm-stamp
           - mozilla-experimenter
           - phentrieve-api
           - wormhole-solana
@@ -24,6 +35,7 @@ on:
           - cloudcost-exporter-amd64
           - cloudcost-exporter-amd64-go
           - posit-connect-content-amd64
+          - tiled-container-canary
           - proteus-controller-multiarch
           - kvrocks-docker
           - kvrocks-docker-sccache
@@ -89,6 +101,11 @@ on:
         required: false
         type: string
         default: ""
+      dispatch_token:
+        description: Unique caller token used to correlate a dispatched series run.
+        required: false
+        type: string
+        default: manual
       rust_target_cache:
         description: Offload Dockerfile Cargo target cache mounts for the declared Rust cases.
         required: false
@@ -123,11 +140,17 @@ jobs:
       docker_working_directory: ${{ steps.case.outputs.docker_working_directory }}
       docker_bake_file: ${{ steps.case.outputs.docker_bake_file }}
       docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
+      docker_compose_file: ${{ steps.case.outputs.docker_compose_file }}
+      docker_compose_command: ${{ steps.case.outputs.docker_compose_command }}
+      docker_compose_prepare_command: ${{ steps.case.outputs.docker_compose_prepare_command }}
+      docker_compose_host_user: ${{ steps.case.outputs.docker_compose_host_user }}
+      docker_compose_success_service: ${{ steps.case.outputs.docker_compose_success_service }}
       docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
       free_disk_space: ${{ steps.case.outputs.free_disk_space }}
+      prune_builder: ${{ steps.case.outputs.prune_builder }}
       setup_qemu: ${{ steps.case.outputs.setup_qemu }}
       docker_build_extra_args: ${{ steps.case.outputs.docker_build_extra_args }}
       docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
@@ -165,7 +188,7 @@ jobs:
 
   github-actions-cache:
     name: GHA
-    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -207,6 +230,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -214,11 +242,12 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
 
   registry-cache:
     name: GHCR
-    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -262,6 +291,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -269,6 +303,7 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image || 'mirror.gcr.io/moby/buildkit:buildx-stable-1' }}
           registry_cache_ref: ghcr.io/${{ github.repository_owner }}/docker-cache-proof-${{ needs.case.outputs.case_id }}
@@ -324,6 +359,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -334,6 +374,7 @@ jobs:
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image }}
 
@@ -385,6 +426,7 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           project_repo: ${{ needs.case.outputs.project_repo }}
           project_ref: ${{ needs.case.outputs.project_ref }}
+          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_tag: ${{ format('{0}-{1}', needs.case.outputs.image_tag, matrix.arch) }}
@@ -398,6 +440,7 @@ jobs:
           runner_label: ${{ matrix.runner_label }}
           cli_platform: ${{ matrix.cli_platform }}
           cli_version: ${{ inputs.cli_version }}
+          prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: 'false'
           buildkit_image: ${{ inputs.buildkit_image }}
 

@@ -56,7 +56,9 @@ while IFS= read -r prepare_command; do
   echo "Preparing ${case_id} source (step ${prepare_step})"
   (
     cd "$source_dir"
-    PROJECT_REF="$actual_ref" \
+    PROOF_REPO_ROOT="$repo_root" \
+      CASE_ID="$case_id" \
+      PROJECT_REF="$actual_ref" \
       PROJECT_TAG="$project_tag" \
       PROJECT_L10N_SHA="$project_l10n_sha" \
       bash -euo pipefail -c "$prepare_command"

@@ -14,6 +14,15 @@ on:
           - biar-datalakehouse-api
           - biar-jupyterhub
           - blockscout-frontend
+          - mae-containers
+          - mae-containers-tool-cache
+          - mae-collab-e2e
+          - mae-collab-e2e-tool-cache
+          - mae-headless-e2e
+          - mae-headless-e2e-tool-cache
+          - legalquants-gateway-web
+          - legalquants-api
+          - vilnacrm-bootstrap-infrastructure
           - mediswarm-odelia
           - mediswarm-stamp
           - mozilla-experimenter
@@ -130,6 +139,11 @@ jobs:
       docker_working_directory: ${{ steps.case.outputs.docker_working_directory }}
       docker_bake_file: ${{ steps.case.outputs.docker_bake_file }}
       docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
+      docker_compose_file: ${{ steps.case.outputs.docker_compose_file }}
+      docker_compose_command: ${{ steps.case.outputs.docker_compose_command }}
+      docker_compose_prepare_command: ${{ steps.case.outputs.docker_compose_prepare_command }}
+      docker_compose_host_user: ${{ steps.case.outputs.docker_compose_host_user }}
+      docker_compose_success_service: ${{ steps.case.outputs.docker_compose_success_service }}
       docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
@@ -173,7 +187,7 @@ jobs:
 
   github-actions-cache:
     name: GHA
-    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -215,6 +229,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -227,7 +246,7 @@ jobs:
 
   registry-cache:
     name: GHCR
-    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
+    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
     needs: case
     runs-on: ${{ needs.case.outputs.runner_label }}
     timeout-minutes: 180
@@ -271,6 +290,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
@@ -334,6 +358,11 @@ jobs:
           docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
           docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
           docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
+          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
+          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
+          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
+          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
+          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
           docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
           image_tag: ${{ needs.case.outputs.image_tag }}
           docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}

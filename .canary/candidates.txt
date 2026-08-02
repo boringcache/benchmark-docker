@@ -9,3 +9,4 @@ kvrocks-docker main fresh
 mediswarm-odelia main rolling load
 mediswarm-stamp main rolling load
 mozilla-experimenter issue fresh load
+vilnacrm-bootstrap-infrastructure main fresh

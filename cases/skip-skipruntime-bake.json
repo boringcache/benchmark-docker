@@ -1,0 +1,38 @@
+{
+  "id": "skip-skipruntime-bake",
+  "name": "Skip native runtime Bake graph (amd64)",
+  "source": {
+    "repo": "SkipLabs/skip",
+    "pain_url": "https://github.com/SkipLabs/skip/issues/1364",
+    "evidence_run": "https://circleci.com/gh/SkipLabs/skip/18060",
+    "runner": "Skip uses CircleCI remote Docker; this proof uses GitHub-hosted ubuntu-24.04"
+  },
+  "refs": {
+    "main": "1813f196b481b24a08b6f418bd4d9f03d7849333",
+    "seed": "34499568bb0d2da8f04173e4641cfa0c1e98050d",
+    "rolling1": "5ae7635588faf91cfbe3e2a5c559d446f0f8dab7",
+    "rolling2": "0374dcbe40821c65b1f2cc7ddcaa80efd0a56485",
+    "rolling3": "7c6bb5b1664ada168e6491ead702a1a5966d069f",
+    "rolling4": "53055d79b1ea13f9e18bbdf1cbc40bfebc5deeb2",
+    "rolling5": "1813f196b481b24a08b6f418bd4d9f03d7849333"
+  },
+  "docker": {
+    "build_family": "bake",
+    "bake_file": "docker-bake.hcl",
+    "bake_group": "skipruntime",
+    "image": "skip-skipruntime-bake",
+    "extra_args": [
+      "--set=*.platform=linux/amd64",
+      "--set=skiplang-bin-builder.args.SKIP_CAPACITY=6G",
+      "--set=skipruntime.args.SKIP_CAPACITY=6G"
+    ],
+    "prepare_commands": [
+      "git submodule update --init --depth 1 skiplang/compiler/bootstrap skiplang/prelude/libbacktrace"
+    ],
+    "original_cache": "None: the CircleCI build wrapper deliberately passes --no-cache"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-24.04",
+    "free_disk_space": true
+  }
+}

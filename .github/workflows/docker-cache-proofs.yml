@@ -26,6 +26,7 @@ on:
           - mediswarm-odelia
           - mediswarm-stamp
           - mozilla-experimenter
+          - skip-skipruntime-bake
           - phentrieve-api
           - wormhole-solana
           - cardstack-realm-server
@@ -146,6 +147,7 @@ jobs:
       docker_compose_host_user: ${{ steps.case.outputs.docker_compose_host_user }}
       docker_compose_success_service: ${{ steps.case.outputs.docker_compose_success_service }}
       docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
+      cli_version: ${{ steps.case.outputs.cli_version }}
       image_tag: ${{ steps.case.outputs.image_tag }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
@@ -373,7 +375,7 @@ jobs:
           build_output: ${{ inputs.build_output }}
           runner_label: ${{ needs.case.outputs.runner_label }}
           cli_platform: ${{ needs.case.outputs.cli_platform }}
-          cli_version: ${{ inputs.cli_version }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
           prune_builder: ${{ needs.case.outputs.prune_builder }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
           buildkit_image: ${{ inputs.buildkit_image }}

@@ -121,6 +121,9 @@ Each run uploads machine-readable JSON and Markdown summaries using the same art
 
 ## Prospect proofs
 
+- [Skip native runtime Bake proof](prospects/skip-skipruntime-bake.md)
+  preserves Skip's named-context compiler graph and records the intentional
+  removal of `--no-cache` as a benchmark policy change.
 - [Mozilla Experimenter Bake proof](prospects/mozilla-experimenter.md)
 - [MAE Docker Compose proof](prospects/mae-compose.md)
 - [LegalQuants lq-ai Docker Compose proof](prospects/legalquants-compose.md)

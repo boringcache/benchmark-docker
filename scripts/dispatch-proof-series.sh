@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="boringcache/docker-cache-proofs"
+repo="boringcache/benchmark-docker"
 workflow="Docker Benchmark"
 workflow_ref="main"
 case_id=""
@@ -35,8 +35,8 @@ By default it runs:
 
 Options:
   --case CASE_ID                  Case manifest id, e.g. phentrieve-api
-  --repo OWNER/REPO               Target proof repo (default: boringcache/docker-cache-proofs)
-  --workflow NAME_OR_FILE         Workflow name or file (default: Docker Cache Proof)
+  --repo OWNER/REPO               Target benchmark repo (default: boringcache/benchmark-docker)
+  --workflow NAME_OR_FILE         Workflow name or file (default: Docker Benchmark)
   --ref GIT_REF                   Workflow ref to dispatch (default: main)
   --fresh-ref REF_KEY             Ref key for fresh run (default: main)
   --rolling-bootstrap-ref REF_KEY Ref key for rolling bootstrap (default: main)

@@ -159,7 +159,7 @@ jobs:
     name: BoringCache ${{ needs.case.outputs.case_id }} ${{ inputs.cache_lane == 'rolling' && 'commit' || 'cold' }}
     if: needs.case.outputs.native_matrix_enabled != 'true' && (inputs.runner_label == '' || github.ref_name == 'main')
     needs: case
-    runs-on: ${{ github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
     timeout-minutes: 180
     env: &product_env
       BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
@@ -198,7 +198,7 @@ jobs:
     name: BoringCache ${{ needs.case.outputs.case_id }} warm
     if: inputs.cache_lane == 'fresh' && needs.case.outputs.native_matrix_enabled != 'true'
     needs: [case, publish]
-    runs-on: ${{ github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
     timeout-minutes: 180
     env: *product_env
     steps:

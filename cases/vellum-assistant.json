@@ -19,7 +19,7 @@
     "original_cache": "type=gha,mode=max,ignore-error=true,scope=assistant-dev-linux/amd64"
   },
   "workflow": {
-    "runner_label": "ubuntu-latest-m",
+    "runner_label": "ubuntu-latest",
     "free_disk_space": true
   }
 }

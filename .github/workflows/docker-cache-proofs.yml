@@ -94,6 +94,11 @@ on:
         required: false
         type: boolean
         default: false
+      runner_label:
+        description: "Optional runner label for a manual main-branch experiment."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -150,73 +155,155 @@ jobs:
             exit 1
           }
 
-  boringcache:
-    name: BC
-    if: needs.case.outputs.native_matrix_enabled != 'true'
+  publish:
+    name: BoringCache ${{ needs.case.outputs.case_id }} ${{ inputs.cache_lane == 'rolling' && 'commit' || 'cold' }}
+    if: needs.case.outputs.native_matrix_enabled != 'true' && (inputs.runner_label == '' || github.ref_name == 'main')
     needs: case
-    uses: ./.github/workflows/reusable-docker-product-proof.yml
-    with:
-      cache_lane: ${{ inputs.cache_lane }}
-      case_id: ${{ needs.case.outputs.case_id }}
-      case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-      benchmark_id: ${{ needs.case.outputs.benchmark_id }}
-      cache_id: ${{ needs.case.outputs.cache_id }}
-      project_repo: ${{ needs.case.outputs.project_repo }}
-      project_ref: ${{ needs.case.outputs.project_ref }}
-      dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-      docker_context: ${{ needs.case.outputs.docker_context }}
-      image_repository: ${{ needs.case.outputs.image_repository }}
-      image_tag: ${{ needs.case.outputs.image_tag }}
-      target: ${{ needs.case.outputs.target }}
-      platforms: ${{ needs.case.outputs.platforms }}
-      build_args: ${{ needs.case.outputs.build_args }}
-      docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-      sbom: ${{ needs.case.outputs.sbom == 'true' }}
-      provenance: ${{ needs.case.outputs.provenance == 'true' }}
-      cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
-      cli_platform: ${{ needs.case.outputs.cli_platform }}
-      runner_label: ${{ needs.case.outputs.runner_label }}
-      free_disk_space: ${{ needs.case.outputs.free_disk_space == 'true' }}
-      setup_qemu: ${{ needs.case.outputs.setup_qemu == 'true' }}
-      build_output: ${{ inputs.build_output }}
-      buildkit_image: ${{ inputs.buildkit_image }}
-      cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
-      rust_target_cache: ${{ inputs.rust_target_cache }}
-    secrets: inherit
+    runs-on: ${{ github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
+    timeout-minutes: 180
+    env: &product_env
+      BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
+      BORINGCACHE_SAVE_TOKEN: ${{ secrets.BORINGCACHE_SAVE_TOKEN }}
+      BORINGCACHE_NO_GIT: "true"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/docker-product-proof
+        with:
+          cache_lane: ${{ inputs.cache_lane }}
+          phase: publish
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+          cache_id: ${{ needs.case.outputs.cache_id }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_repository: ${{ needs.case.outputs.image_repository }}
+          image_tag: ${{ needs.case.outputs.image_tag }}
+          target: ${{ needs.case.outputs.target }}
+          platforms: ${{ needs.case.outputs.platforms }}
+          build_args: ${{ needs.case.outputs.build_args }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          sbom: ${{ needs.case.outputs.sbom }}
+          provenance: ${{ needs.case.outputs.provenance }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+          cli_platform: ${{ needs.case.outputs.cli_platform }}
+          free_disk_space: ${{ needs.case.outputs.free_disk_space }}
+          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
+          build_output: ${{ inputs.build_output }}
+          buildkit_image: ${{ inputs.buildkit_image }}
+          cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
+          rust_target_cache: ${{ inputs.rust_target_cache }}
 
-  boringcache-native:
-    name: BC / ${{ matrix.arch }}
+  warm:
+    name: BoringCache ${{ needs.case.outputs.case_id }} warm
+    if: inputs.cache_lane == 'fresh' && needs.case.outputs.native_matrix_enabled != 'true'
+    needs: [case, publish]
+    runs-on: ${{ github.ref_name == 'main' && inputs.runner_label || needs.case.outputs.runner_label }}
+    timeout-minutes: 180
+    env: *product_env
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/docker-product-proof
+        with:
+          cache_lane: ${{ inputs.cache_lane }}
+          phase: warm
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+          cache_id: ${{ needs.case.outputs.cache_id }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_repository: ${{ needs.case.outputs.image_repository }}
+          image_tag: ${{ needs.case.outputs.image_tag }}
+          target: ${{ needs.case.outputs.target }}
+          platforms: ${{ needs.case.outputs.platforms }}
+          build_args: ${{ needs.case.outputs.build_args }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          sbom: ${{ needs.case.outputs.sbom }}
+          provenance: ${{ needs.case.outputs.provenance }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+          cli_platform: ${{ needs.case.outputs.cli_platform }}
+          free_disk_space: ${{ needs.case.outputs.free_disk_space }}
+          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
+          build_output: ${{ inputs.build_output }}
+          buildkit_image: ${{ inputs.buildkit_image }}
+          cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
+          rust_target_cache: ${{ inputs.rust_target_cache }}
+
+  native-publish:
+    name: BoringCache ${{ needs.case.outputs.case_id }} ${{ matrix.arch }} ${{ inputs.cache_lane == 'rolling' && 'commit' || 'cold' }}
     if: needs.case.outputs.native_matrix_enabled == 'true'
     needs: case
+    runs-on: ${{ matrix.runner_label }}
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.case.outputs.native_matrix) }}
-    uses: ./.github/workflows/reusable-docker-product-proof.yml
-    with:
-      cache_lane: ${{ inputs.cache_lane }}
-      case_id: ${{ needs.case.outputs.case_id }}
-      case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-      benchmark_id: ${{ needs.case.outputs.benchmark_id }}
-      cache_id: ${{ needs.case.outputs.cache_id }}
-      project_repo: ${{ needs.case.outputs.project_repo }}
-      project_ref: ${{ needs.case.outputs.project_ref }}
-      dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-      docker_context: ${{ needs.case.outputs.docker_context }}
-      image_repository: ${{ needs.case.outputs.image_repository }}
-      image_tag: ${{ needs.case.outputs.image_tag }}-${{ matrix.arch }}
-      target: ${{ needs.case.outputs.target }}
-      platforms: ${{ matrix.platform }}
-      build_args: ${{ needs.case.outputs.build_args }}
-      docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-      sbom: ${{ needs.case.outputs.sbom == 'true' }}
-      provenance: ${{ needs.case.outputs.provenance == 'true' }}
-      cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
-      cli_platform: ${{ matrix.cli_platform }}
-      runner_label: ${{ matrix.runner_label }}
-      free_disk_space: ${{ needs.case.outputs.free_disk_space == 'true' }}
-      setup_qemu: false
-      build_output: ${{ inputs.build_output }}
-      buildkit_image: ${{ inputs.buildkit_image }}
-      cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
-      rust_target_cache: ${{ inputs.rust_target_cache }}
-    secrets: inherit
+    env: *product_env
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/docker-product-proof
+        with:
+          cache_lane: ${{ inputs.cache_lane }}
+          phase: publish
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+          cache_id: ${{ needs.case.outputs.cache_id }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_repository: ${{ needs.case.outputs.image_repository }}
+          image_tag: ${{ needs.case.outputs.image_tag }}-${{ matrix.arch }}
+          target: ${{ needs.case.outputs.target }}
+          platforms: ${{ matrix.platform }}
+          build_args: ${{ needs.case.outputs.build_args }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          sbom: ${{ needs.case.outputs.sbom }}
+          provenance: ${{ needs.case.outputs.provenance }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+          cli_platform: ${{ matrix.cli_platform }}
+          free_disk_space: ${{ needs.case.outputs.free_disk_space }}
+          setup_qemu: "false"
+          build_output: ${{ inputs.build_output }}
+          buildkit_image: ${{ inputs.buildkit_image }}
+          cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
+          rust_target_cache: ${{ inputs.rust_target_cache }}
+
+  native-warm:
+    name: BoringCache ${{ needs.case.outputs.case_id }} ${{ matrix.arch }} warm
+    if: inputs.cache_lane == 'fresh' && needs.case.outputs.native_matrix_enabled == 'true'
+    needs: [case, native-publish]
+    runs-on: ${{ matrix.runner_label }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.case.outputs.native_matrix) }}
+    env: *product_env
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/docker-product-proof
+        with:
+          cache_lane: ${{ inputs.cache_lane }}
+          phase: warm
+          case_id: ${{ needs.case.outputs.case_id }}
+          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+          cache_id: ${{ needs.case.outputs.cache_id }}
+          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+          docker_context: ${{ needs.case.outputs.docker_context }}
+          image_repository: ${{ needs.case.outputs.image_repository }}
+          image_tag: ${{ needs.case.outputs.image_tag }}-${{ matrix.arch }}
+          target: ${{ needs.case.outputs.target }}
+          platforms: ${{ matrix.platform }}
+          build_args: ${{ needs.case.outputs.build_args }}
+          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+          sbom: ${{ needs.case.outputs.sbom }}
+          provenance: ${{ needs.case.outputs.provenance }}
+          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+          cli_platform: ${{ matrix.cli_platform }}
+          free_disk_space: ${{ needs.case.outputs.free_disk_space }}
+          setup_qemu: "false"
+          build_output: ${{ inputs.build_output }}
+          buildkit_image: ${{ inputs.buildkit_image }}
+          cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
+          rust_target_cache: ${{ inputs.rust_target_cache }}

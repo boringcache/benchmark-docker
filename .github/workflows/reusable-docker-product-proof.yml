@@ -1,0 +1,177 @@
+name: "Reusable Docker Product Proof"
+
+on:
+  workflow_call:
+    inputs:
+      cache_lane: {required: true, type: string}
+      case_id: {required: true, type: string}
+      case_ref_key: {required: true, type: string}
+      benchmark_id: {required: true, type: string}
+      cache_id: {required: true, type: string}
+      project_repo: {required: true, type: string}
+      project_ref: {required: true, type: string}
+      dockerfile_path: {required: true, type: string}
+      docker_context: {required: true, type: string}
+      image_repository: {required: true, type: string}
+      image_tag: {required: true, type: string}
+      target: {required: false, type: string, default: ""}
+      platforms: {required: false, type: string, default: ""}
+      build_args: {required: false, type: string, default: ""}
+      docker_tool_cache: {required: false, type: string, default: ""}
+      sbom: {required: false, type: boolean, default: false}
+      provenance: {required: false, type: boolean, default: false}
+      cli_version: {required: false, type: string, default: ""}
+      cli_platform: {required: true, type: string}
+      runner_label: {required: true, type: string}
+      free_disk_space: {required: false, type: boolean, default: false}
+      setup_qemu: {required: false, type: boolean, default: false}
+      build_output: {required: true, type: string}
+      buildkit_image: {required: false, type: string, default: ""}
+      cache_scope_suffix: {required: false, type: string, default: ""}
+      rust_target_cache: {required: false, type: boolean, default: false}
+
+env:
+  CACHE_LANE: ${{ inputs.cache_lane }}
+  CACHE_ID: ${{ inputs.cache_id }}
+
+jobs:
+  publish:
+    name: ${{ inputs.cache_lane == 'rolling' && 'Commit' || 'Cold' }}
+    runs-on: ${{ inputs.runner_label }}
+    timeout-minutes: 180
+    outputs:
+      cache_scope: ${{ steps.scope.outputs.cache_scope }}
+      docker_tool_cache: ${{ steps.scope.outputs.docker_tool_cache }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+      - name: Free runner disk space
+        if: inputs.free_disk_space
+        run: ./scripts/free-runner-disk.sh
+      - name: Prepare the pinned workload
+        run: ./scripts/prepare-case-source.sh "${{ inputs.case_id }}" "${{ inputs.case_ref_key }}"
+      - name: Select the cache cohort
+        id: scope
+        env:
+          REQUESTED_TOOL_CACHE: ${{ inputs.docker_tool_cache }}
+          SCOPE_SUFFIX: ${{ inputs.cache_scope_suffix }}
+        run: |
+          set -euo pipefail
+          ref_slug="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+          ref_slug="${ref_slug#-}"
+          ref_slug="${ref_slug%-}"
+          ref_slug="${ref_slug:-main}"
+          if [[ "$CACHE_LANE" == "rolling" ]]; then
+            cache_scope="${CACHE_ID}-rolling-${ref_slug}${SCOPE_SUFFIX}"
+          else
+            cache_scope="${CACHE_ID}-run-r${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}${SCOPE_SUFFIX}"
+          fi
+          ./scripts/scope-boringcache-run.sh "$cache_scope"
+          docker_tool_cache="${REQUESTED_TOOL_CACHE//\{CACHE_SCOPE\}/$cache_scope}"
+          {
+            echo "cache_scope=${cache_scope}"
+            echo "docker_tool_cache<<EOF"
+            echo "$docker_tool_cache"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Log in for an image push
+        if: inputs.build_output == 'ghcr'
+        uses: docker/login-action@v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Run BoringCache on the real Docker workload
+        uses: boringcache/one@09e053620cda4d3472f26a3ddd181144a108e2c2 # v1.16.8
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          cli-platform: ${{ inputs.cli_platform }}
+          setup: none
+          mode: docker
+          trust-policy: publish
+          context: ${{ inputs.docker_context }}
+          dockerfile: ${{ inputs.dockerfile_path }}
+          image: ${{ inputs.image_repository }}
+          tags: ${{ inputs.image_tag }}
+          target: ${{ inputs.target }}
+          platforms: ${{ inputs.platforms }}
+          build-args: ${{ inputs.build_args }}
+          qemu: ${{ inputs.setup_qemu }}
+          load: ${{ inputs.build_output == 'load' }}
+          push: ${{ inputs.build_output == 'ghcr' }}
+          no-cache: ${{ inputs.rust_target_cache }}
+          sbom: ${{ inputs.sbom }}
+          provenance: ${{ inputs.provenance }}
+          docker-tool-cache: ${{ steps.scope.outputs.docker_tool_cache }}
+          fail-on-cache-error: true
+          metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},phase=${{ inputs.cache_lane == 'rolling' && 'rolling' || 'fresh-cold' }}
+          managed-buildkit-image: ${{ inputs.buildkit_image }}
+        env:
+          BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
+          BORINGCACHE_SAVE_TOKEN: ${{ secrets.BORINGCACHE_SAVE_TOKEN }}
+          BORINGCACHE_NO_GIT: "true"
+          BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache && '1' || '' }}
+      - name: Verify the loaded image
+        if: inputs.build_output == 'load'
+        run: docker image inspect "${{ inputs.image_repository }}:${{ inputs.image_tag }}" >/dev/null
+
+  restore:
+    name: Warm
+    needs: publish
+    if: inputs.cache_lane == 'fresh'
+    runs-on: ${{ inputs.runner_label }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+      - name: Free runner disk space
+        if: inputs.free_disk_space
+        run: ./scripts/free-runner-disk.sh
+      - name: Prepare the pinned workload
+        run: ./scripts/prepare-case-source.sh "${{ inputs.case_id }}" "${{ inputs.case_ref_key }}"
+      - name: Select the published cache cohort
+        run: ./scripts/scope-boringcache-run.sh "${{ needs.publish.outputs.cache_scope }}"
+      - name: Log in for an image push
+        if: inputs.build_output == 'ghcr'
+        uses: docker/login-action@v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Restore BoringCache on a fresh runner
+        uses: boringcache/one@09e053620cda4d3472f26a3ddd181144a108e2c2 # v1.16.8
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          cli-platform: ${{ inputs.cli_platform }}
+          setup: none
+          mode: docker
+          trust-policy: restore
+          context: ${{ inputs.docker_context }}
+          dockerfile: ${{ inputs.dockerfile_path }}
+          image: ${{ inputs.image_repository }}
+          tags: ${{ inputs.image_tag }}
+          target: ${{ inputs.target }}
+          platforms: ${{ inputs.platforms }}
+          build-args: ${{ inputs.build_args }}
+          qemu: ${{ inputs.setup_qemu }}
+          load: ${{ inputs.build_output == 'load' }}
+          push: ${{ inputs.build_output == 'ghcr' }}
+          no-cache: ${{ inputs.rust_target_cache }}
+          sbom: ${{ inputs.sbom }}
+          provenance: ${{ inputs.provenance }}
+          docker-tool-cache: ${{ needs.publish.outputs.docker_tool_cache }}
+          fail-on-cache-miss: true
+          fail-on-cache-error: true
+          metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},phase=fresh-warm
+          managed-buildkit-image: ${{ inputs.buildkit_image }}
+        env:
+          BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
+          BORINGCACHE_NO_GIT: "true"
+          BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache && '1' || '' }}
+      - name: Verify the loaded image
+        if: inputs.build_output == 'load'
+        run: docker image inspect "${{ inputs.image_repository }}:${{ inputs.image_tag }}" >/dev/null

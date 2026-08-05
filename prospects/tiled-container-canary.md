@@ -58,13 +58,12 @@ measure of remote cache behavior after the upstream fix has already landed.
 Run the ordered pair with an isolated scope and no image output:
 
 ```sh
-./scripts/dispatch-proof-series.sh \
-  --case tiled-container-canary \
-  --rolling-bootstrap-ref seed \
-  --lane-filter all \
-  --build-output none \
-  --cache-scope-suffix tiled-rolling-2 \
-  --skip-fresh
+gh workflow run docker-cache-proofs.yml \
+  -f case_id=tiled-container-canary \
+  -f ref_key=seed \
+  -f cache_lane=rolling \
+  -f build_output=none \
+  -f cache_scope_suffix=tiled-rolling-2
 ```
 
 The earlier `tiled-rolling-1` attempt was cancelled after a duplicate manual

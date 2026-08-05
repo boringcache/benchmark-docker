@@ -93,19 +93,17 @@ The commits follow first-parent order on Blockscout's `main` branch:
 Use a new cache scope suffix each time so an older run cannot seed the results:
 
 ```bash
-./scripts/dispatch-proof-series.sh \
-  --case blockscout-frontend \
-  --ref main \
-  --rolling-bootstrap-ref seed \
-  --lane-filter registry-buildkit \
-  --cache-scope-suffix blockscout-rerun-1 \
-  --skip-fresh \
-  --warm-replay
+gh workflow run docker-cache-proofs.yml \
+  -f case_id=blockscout-frontend \
+  -f ref_key=main \
+  -f cache_lane=rolling \
+  -f build_output=none \
+  -f cache_scope_suffix=blockscout-rerun-1
 ```
 
-The script runs the bootstrap, the five rolling commits, and one unchanged warm
-replay. Each run records build time, cache import and export time, cached steps,
-and GHCR package storage.
+Dispatch each later pinned ref with the same scope suffix to extend the rolling
+series. BoringCache records the product run; this repository does not duplicate
+its receipt or cache-internal assertions.
 
 ## What this means for Blockscout
 

@@ -72,14 +72,12 @@ layer-cache proof must not be presented as a complete fix for that issue.
 Use a new suffix so no earlier proof can seed the series:
 
 ```bash
-./scripts/dispatch-proof-series.sh \
-  --case posit-connect-content-amd64 \
-  --ref agent/posit-connect-proof \
-  --rolling-bootstrap-ref seed \
-  --lane-filter registry-buildkit \
-  --cache-scope-suffix posit-connect-rolling-1 \
-  --skip-fresh \
-  --warm-replay
+gh workflow run docker-cache-proofs.yml \
+  -f case_id=posit-connect-content-amd64 \
+  -f ref_key=main \
+  -f cache_lane=rolling \
+  -f build_output=none \
+  -f cache_scope_suffix=posit-connect-rolling-1
 ```
 
 The GHCR lane is a cache-package control only. Neither lane pushes a runnable

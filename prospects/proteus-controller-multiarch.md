@@ -104,21 +104,18 @@ cache reuse from one Proteus commit to the next.
 Use a new cache scope suffix so an older run cannot seed the result:
 
 ```bash
-./scripts/dispatch-proof-series.sh \
-  --case proteus-controller-multiarch \
-  --ref main \
-  --rolling-bootstrap-ref main \
-  --rolling-ref rolling1 \
-  --build-output ghcr \
-  --lane-filter buildkit \
-  --cache-scope-suffix proteus-rerun-1 \
-  --rust-target-cache \
-  --skip-fresh
+gh workflow run docker-cache-proofs.yml \
+  -f case_id=proteus-controller-multiarch \
+  -f ref_key=main \
+  -f cache_lane=rolling \
+  -f build_output=ghcr \
+  -f cache_scope_suffix=proteus-rerun-1 \
+  -f rust_target_cache=true
 ```
 
-The first run seeds the native architecture caches. The second checks out the
-later Proteus commit and records BuildKit, sccache, Cargo `target`, image, and
-manifest evidence.
+Dispatch `rolling1` with the same suffix after the seed finishes. The two runs
+exercise BuildKit, sccache, Cargo `target`, image, and manifest reuse on native
+AMD64 and ARM64 runners.
 
 ## What this means for Proteus
 

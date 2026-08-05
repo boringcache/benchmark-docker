@@ -72,13 +72,12 @@ for case_id in \
   biar-datalakehouse-api \
   biar-jupyterhub
 do
-  ./scripts/dispatch-proof-series.sh \
-    --case "$case_id" \
-    --ref main \
-    --rolling-bootstrap-ref seed \
-    --lane-filter all \
-    --cache-scope-suffix biar-rolling-rerun-1 \
-    --skip-fresh
+  gh workflow run docker-cache-proofs.yml \
+    -f case_id="$case_id" \
+    -f ref_key=main \
+    -f cache_lane=rolling \
+    -f build_output=none \
+    -f cache_scope_suffix=biar-rolling-rerun-1
 done
 ```
 

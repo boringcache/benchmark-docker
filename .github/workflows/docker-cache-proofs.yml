@@ -1,123 +1,99 @@
-name: Docker Benchmark
+name: "Docker Product Proof"
 run-name: >-
-  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4} | dispatch={5}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off', inputs.dispatch_token) }}
+  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off') }}
 
 on:
   workflow_dispatch:
     inputs:
       case_id:
-        description: Case to run
+        description: "Real Buildx workload to run."
         required: true
         type: choice
         options:
+          - anythingllm-primary
+          - anythingllm-primary-arm64
+          - auto-mobile-docker
           - biar-automation-orchestrator
           - biar-datalakehouse-api
           - biar-jupyterhub
           - blockscout-frontend
-          - mae-containers
-          - mae-containers-tool-cache
-          - mae-collab-e2e
-          - mae-collab-e2e-tool-cache
-          - mae-headless-e2e
-          - mae-headless-e2e-tool-cache
-          - legalquants-gateway-web
-          - legalquants-api
-          - vilnacrm-bootstrap-infrastructure
-          - mediswarm-odelia
-          - mediswarm-stamp
-          - mozilla-experimenter
-          - skip-skipruntime-bake
-          - phentrieve-api
-          - wormhole-solana
           - cardstack-realm-server
-          - dependabot-updater-core
-          - iggy-rust-server
-          - iggy-rust-server-sccache
+          - chatwoot-docker
           - cloudcost-exporter-amd64
           - cloudcost-exporter-amd64-go
-          - posit-connect-content-amd64
-          - tiled-container-canary
-          - proteus-controller-multiarch
-          - kvrocks-docker
-          - kvrocks-docker-sccache
-          - nmisp-nightly
-          - mozilla-bedrock-release
-          - mozilla-fxa-mono
-          - pythonitalia-pycon-pretix
-          - chatwoot-docker
-          - ghostfolio-docker
-          - open-webui-ollama
-          - auto-mobile-docker
-          - supabase-studio
-          - supabase-storage-api
-          - supabase-storage-api-arm64
-          - prefect-conda
-          - teable-community
+          - dependabot-updater-core
           - formbricks-web
-          - umami-release
+          - ghostfolio-docker
+          - grist-oss
+          - heyform-community
           - hoppscotch-backend
           - hoppscotch-backend-arm64
-          - typebot-builder
-          - stirling-pdf-embedded
-          - heyform-community
-          - grist-oss
+          - iggy-rust-server
+          - iggy-rust-server-sccache
+          - karakeep-aio
+          - kvrocks-docker
+          - kvrocks-docker-sccache
+          - misskey-develop-amd64
+          - mozilla-bedrock-release
+          - mozilla-fxa-mono
+          - nmisp-nightly
+          - omninode-runtime
+          - open-webui-ollama
           - openstatus-dashboard
           - openstatus-dashboard-arm64
-          - karakeep-aio
-          - anythingllm-primary
-          - anythingllm-primary-arm64
-          - misskey-develop-amd64
-          - omninode-runtime
+          - phentrieve-api
+          - posit-connect-content-amd64
+          - prefect-conda
+          - proteus-controller-multiarch
+          - pythonitalia-pycon-pretix
+          - stirling-pdf-embedded
+          - supabase-storage-api
+          - supabase-storage-api-arm64
+          - supabase-studio
+          - teable-community
+          - tiled-container-canary
+          - typebot-builder
+          - umami-release
           - vellum-assistant
           - windmill-extra
+          - wormhole-solana
       ref_key:
-        description: Pinned case ref name or exact 40-character source SHA
+        description: "Pinned case ref name or exact source SHA."
         required: true
         type: string
         default: main
       cache_lane:
-        description: Benchmark lane
+        description: "Fresh proves an exact cold/warm pair; rolling reuses the case graph."
         required: true
         type: choice
         default: fresh
         options: [fresh, rolling]
       build_output:
-        description: Image output mode
+        description: "Image output mode."
         required: true
         type: choice
         default: none
-        options: [none, load, local-registry, ghcr]
+        options: [none, load, ghcr]
       buildkit_image:
-        description: Optional managed BoringCache BuildKit image.
+        description: "Optional managed BoringCache BuildKit image."
         required: false
         type: string
         default: ""
       cli_version:
-        description: Optional BoringCache CLI release tag for canary proofs.
+        description: "Optional exact BoringCache CLI release tag."
         required: false
         type: string
         default: ""
       cache_scope_suffix:
-        description: Optional isolated suffix for a controlled seed/rolling series.
+        description: "Optional isolated suffix for a controlled rolling series."
         required: false
         type: string
         default: ""
-      dispatch_token:
-        description: Unique caller token used to correlate a dispatched series run.
-        required: false
-        type: string
-        default: manual
       rust_target_cache:
-        description: Offload Dockerfile Cargo target cache mounts for the declared Rust cases.
+        description: "Exercise the declared Cargo target cache mount through managed mount-cache offload."
         required: false
         type: boolean
         default: false
-      lane_filter:
-        description: Run the proof pair or only BoringCache.
-        required: true
-        type: choice
-        default: all
-        options: [all, buildkit, gha-buildkit, registry-buildkit]
 
 permissions:
   contents: read
@@ -137,334 +113,110 @@ jobs:
       project_ref: ${{ steps.case.outputs.project_ref }}
       dockerfile_path: ${{ steps.case.outputs.dockerfile_path }}
       docker_context: ${{ steps.case.outputs.docker_context }}
-      docker_build_family: ${{ steps.case.outputs.docker_build_family }}
-      docker_working_directory: ${{ steps.case.outputs.docker_working_directory }}
-      docker_bake_file: ${{ steps.case.outputs.docker_bake_file }}
-      docker_bake_group: ${{ steps.case.outputs.docker_bake_group }}
-      docker_compose_file: ${{ steps.case.outputs.docker_compose_file }}
-      docker_compose_command: ${{ steps.case.outputs.docker_compose_command }}
-      docker_compose_prepare_command: ${{ steps.case.outputs.docker_compose_prepare_command }}
-      docker_compose_host_user: ${{ steps.case.outputs.docker_compose_host_user }}
-      docker_compose_success_service: ${{ steps.case.outputs.docker_compose_success_service }}
-      docker_expected_images: ${{ steps.case.outputs.docker_expected_images }}
-      cli_version: ${{ steps.case.outputs.cli_version }}
+      image_repository: ${{ steps.case.outputs.image_repository }}
       image_tag: ${{ steps.case.outputs.image_tag }}
+      target: ${{ steps.case.outputs.target }}
+      platforms: ${{ steps.case.outputs.platforms }}
+      build_args: ${{ steps.case.outputs.build_args }}
+      docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
+      sbom: ${{ steps.case.outputs.sbom }}
+      provenance: ${{ steps.case.outputs.provenance }}
+      cli_version: ${{ steps.case.outputs.cli_version }}
       runner_label: ${{ steps.case.outputs.runner_label }}
       cli_platform: ${{ steps.case.outputs.cli_platform }}
       free_disk_space: ${{ steps.case.outputs.free_disk_space }}
-      prune_builder: ${{ steps.case.outputs.prune_builder }}
       setup_qemu: ${{ steps.case.outputs.setup_qemu }}
-      docker_build_extra_args: ${{ steps.case.outputs.docker_build_extra_args }}
-      docker_tool_cache: ${{ steps.case.outputs.docker_tool_cache }}
       rust_target_cache_kind: ${{ steps.case.outputs.rust_target_cache_kind }}
-      rust_target_cache_id_pattern: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
       native_matrix: ${{ steps.case.outputs.native_matrix }}
       native_matrix_enabled: ${{ steps.case.outputs.native_matrix_enabled }}
-      cache_scope_suffix: ${{ steps.scope-suffix.outputs.value }}
+      cache_scope_suffix: ${{ steps.suffix.outputs.value }}
     steps:
       - uses: actions/checkout@v6
       - id: case
         run: ./scripts/emit-case-outputs.sh "${{ inputs.case_id }}" "${{ inputs.ref_key }}" "${{ inputs.build_output }}"
-      - id: scope-suffix
-        name: Normalize the optional cache scope suffix
+      - id: suffix
         env:
           REQUESTED_SUFFIX: ${{ inputs.cache_scope_suffix }}
         run: |
           suffix="${REQUESTED_SUFFIX#-}"
-          if [[ -n "$suffix" ]]; then
-            echo "value=-${suffix}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=" >> "$GITHUB_OUTPUT"
-          fi
+          [[ -z "$suffix" ]] && echo "value=" >> "$GITHUB_OUTPUT" || echo "value=-${suffix}" >> "$GITHUB_OUTPUT"
       - name: Require a declared Rust target cache mount
-        if: ${{ inputs.rust_target_cache }}
+        if: inputs.rust_target_cache
         env:
           TARGET_CACHE_KIND: ${{ steps.case.outputs.rust_target_cache_kind }}
-          TARGET_CACHE_PATTERN: ${{ steps.case.outputs.rust_target_cache_id_pattern }}
         run: |
           [[ "$TARGET_CACHE_KIND" == "buildkit-cache-mount" ]] || {
             echo "${{ inputs.case_id }} does not declare a BuildKit Rust target cache mount" >&2
             exit 1
           }
-          [[ -n "$TARGET_CACHE_PATTERN" ]]
-
-  github-actions-cache:
-    name: GHA
-    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && !inputs.rust_target_cache && (inputs.lane_filter == 'all' || inputs.lane_filter == 'gha-buildkit') }}
-    needs: case
-    runs-on: ${{ needs.case.outputs.runner_label }}
-    timeout-minutes: 180
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
-      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
-      CASE_ID: ${{ needs.case.outputs.case_id }}
-      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ format('{0}{1}-gha', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
-      CACHE_ID: ${{ needs.case.outputs.cache_id }}
-      CACHE_LANE: ${{ inputs.cache_lane }}
-      CACHE_SCOPE_SUFFIX: -${{ needs.case.outputs.case_id }}
-      DOCKER_BUILD_EXTRA_ARGS: ${{ needs.case.outputs.docker_build_extra_args }}
-      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          submodules: false
-      - name: Free disk space
-        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
-        run: ./scripts/free-runner-disk.sh
-      - name: Run GitHub Actions Cache proof
-        uses: ./.github/actions/docker-case-benchmark
-        with:
-          strategy: actions-cache
-          cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ format('{0}{1}-gha', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
-          cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
-          case_id: ${{ needs.case.outputs.case_id }}
-          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-          project_repo: ${{ needs.case.outputs.project_repo }}
-          project_ref: ${{ needs.case.outputs.project_ref }}
-          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-          docker_context: ${{ needs.case.outputs.docker_context }}
-          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
-          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
-          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
-          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
-          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
-          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
-          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
-          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
-          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
-          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
-          image_tag: ${{ needs.case.outputs.image_tag }}
-          docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
-          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-          build_output: ${{ inputs.build_output }}
-          runner_label: ${{ needs.case.outputs.runner_label }}
-          cli_platform: ${{ needs.case.outputs.cli_platform }}
-          prune_builder: ${{ needs.case.outputs.prune_builder }}
-          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-
-  registry-cache:
-    name: GHCR
-    if: ${{ needs.case.outputs.docker_build_family != 'classic-build' && needs.case.outputs.docker_build_family != 'compose' && needs.case.outputs.native_matrix_enabled != 'true' && inputs.lane_filter == 'registry-buildkit' }}
-    needs: case
-    runs-on: ${{ needs.case.outputs.runner_label }}
-    timeout-minutes: 180
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BORINGCACHE_GHCR_READ_USER: ${{ vars.BORINGCACHE_GHCR_READ_USER || github.actor }}
-      BORINGCACHE_GHCR_READ_TOKEN: ${{ secrets.BORINGCACHE_GHCR_READ_TOKEN }}
-      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
-      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
-      CASE_ID: ${{ needs.case.outputs.case_id }}
-      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ needs.case.outputs.benchmark_id }}-ghcr
-      CACHE_ID: ${{ needs.case.outputs.cache_id }}
-      CACHE_LANE: ${{ inputs.cache_lane }}
-      CACHE_SCOPE_SUFFIX: -${{ needs.case.outputs.case_id }}
-      DOCKER_BUILD_EXTRA_ARGS: ${{ needs.case.outputs.docker_build_extra_args }}
-      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          submodules: false
-      - name: Free disk space
-        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
-        run: ./scripts/free-runner-disk.sh
-      - name: Run GHCR registry cache control
-        uses: ./.github/actions/docker-case-benchmark
-        with:
-          strategy: registry-cache
-          cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ needs.case.outputs.benchmark_id }}-ghcr
-          cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}', needs.case.outputs.case_id, needs.case.outputs.cache_scope_suffix) }}
-          case_id: ${{ needs.case.outputs.case_id }}
-          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-          project_repo: ${{ needs.case.outputs.project_repo }}
-          project_ref: ${{ needs.case.outputs.project_ref }}
-          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-          docker_context: ${{ needs.case.outputs.docker_context }}
-          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
-          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
-          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
-          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
-          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
-          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
-          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
-          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
-          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
-          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
-          image_tag: ${{ needs.case.outputs.image_tag }}
-          docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
-          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-          build_output: ${{ inputs.build_output }}
-          runner_label: ${{ needs.case.outputs.runner_label }}
-          cli_platform: ${{ needs.case.outputs.cli_platform }}
-          prune_builder: ${{ needs.case.outputs.prune_builder }}
-          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          buildkit_image: ${{ inputs.buildkit_image || 'mirror.gcr.io/moby/buildkit:buildx-stable-1' }}
-          registry_cache_ref: ghcr.io/${{ github.repository_owner }}/docker-cache-proof-${{ needs.case.outputs.case_id }}
-          registry_package_owner: ${{ github.repository_owner }}
-          registry_package_name: docker-cache-proof-${{ needs.case.outputs.case_id }}
 
   boringcache:
-    name: ${{ needs.case.outputs.docker_tool_cache != '' && 'BoringCache + toolcache' || 'BoringCache' }}
-    if: ${{ needs.case.outputs.native_matrix_enabled != 'true' }}
+    name: BC
+    if: needs.case.outputs.native_matrix_enabled != 'true'
     needs: case
-    runs-on: ${{ needs.case.outputs.runner_label }}
-    timeout-minutes: 180
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
-      BORINGCACHE_SAVE_TOKEN: ${{ secrets.BORINGCACHE_SAVE_TOKEN }}
-      BORINGCACHE_GHCR_READ_USER: ${{ vars.BORINGCACHE_GHCR_READ_USER || github.actor }}
-      BORINGCACHE_GHCR_READ_TOKEN: ${{ secrets.BORINGCACHE_GHCR_READ_TOKEN }}
-      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
-      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
-      CASE_ID: ${{ needs.case.outputs.case_id }}
-      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ format('{0}{1}-bc', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
-      CACHE_ID: ${{ needs.case.outputs.cache_id }}
-      BENCHMARK_WORKSPACE: boringcache/docker-cache-proof
-      CACHE_LANE: ${{ inputs.cache_lane }}
-      CACHE_SCOPE_SUFFIX: -${{ needs.case.outputs.case_id }}
-      DOCKER_BUILD_EXTRA_ARGS: ${{ needs.case.outputs.docker_build_extra_args }}
-      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          submodules: false
-      - name: Free disk space
-        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
-        run: ./scripts/free-runner-disk.sh
-      - name: Run managed BoringCache proof
-        uses: ./.github/actions/docker-case-benchmark
-        with:
-          strategy: boringcache
-          cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ format('{0}{1}-bc', needs.case.outputs.benchmark_id, inputs.rust_target_cache && '-target' || '') }}
-          cache_id: ${{ needs.case.outputs.cache_id }}
-          cache_scope_suffix: ${{ format('-{0}{1}{2}', needs.case.outputs.case_id, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
-          case_id: ${{ needs.case.outputs.case_id }}
-          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-          project_repo: ${{ needs.case.outputs.project_repo }}
-          project_ref: ${{ needs.case.outputs.project_ref }}
-          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-          docker_context: ${{ needs.case.outputs.docker_context }}
-          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
-          docker_working_directory: ${{ needs.case.outputs.docker_working_directory }}
-          docker_bake_file: ${{ needs.case.outputs.docker_bake_file }}
-          docker_bake_group: ${{ needs.case.outputs.docker_bake_group }}
-          docker_compose_file: ${{ needs.case.outputs.docker_compose_file }}
-          docker_compose_command: ${{ needs.case.outputs.docker_compose_command }}
-          docker_compose_prepare_command: ${{ needs.case.outputs.docker_compose_prepare_command }}
-          docker_compose_host_user: ${{ needs.case.outputs.docker_compose_host_user }}
-          docker_compose_success_service: ${{ needs.case.outputs.docker_compose_success_service }}
-          docker_expected_images: ${{ needs.case.outputs.docker_expected_images }}
-          image_tag: ${{ needs.case.outputs.image_tag }}
-          docker_build_extra_args: ${{ needs.case.outputs.docker_build_extra_args }}
-          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-          rust_target_cache: ${{ inputs.rust_target_cache && 'true' || 'false' }}
-          rust_target_cache_id_pattern: ${{ needs.case.outputs.rust_target_cache_id_pattern }}
-          build_output: ${{ inputs.build_output }}
-          runner_label: ${{ needs.case.outputs.runner_label }}
-          cli_platform: ${{ needs.case.outputs.cli_platform }}
-          cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
-          prune_builder: ${{ needs.case.outputs.prune_builder }}
-          setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          buildkit_image: ${{ inputs.buildkit_image }}
+    uses: ./.github/workflows/reusable-docker-product-proof.yml
+    with:
+      cache_lane: ${{ inputs.cache_lane }}
+      case_id: ${{ needs.case.outputs.case_id }}
+      case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+      benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+      cache_id: ${{ needs.case.outputs.cache_id }}
+      project_repo: ${{ needs.case.outputs.project_repo }}
+      project_ref: ${{ needs.case.outputs.project_ref }}
+      dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+      docker_context: ${{ needs.case.outputs.docker_context }}
+      image_repository: ${{ needs.case.outputs.image_repository }}
+      image_tag: ${{ needs.case.outputs.image_tag }}
+      target: ${{ needs.case.outputs.target }}
+      platforms: ${{ needs.case.outputs.platforms }}
+      build_args: ${{ needs.case.outputs.build_args }}
+      docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+      sbom: ${{ needs.case.outputs.sbom == 'true' }}
+      provenance: ${{ needs.case.outputs.provenance == 'true' }}
+      cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+      cli_platform: ${{ needs.case.outputs.cli_platform }}
+      runner_label: ${{ needs.case.outputs.runner_label }}
+      free_disk_space: ${{ needs.case.outputs.free_disk_space == 'true' }}
+      setup_qemu: ${{ needs.case.outputs.setup_qemu == 'true' }}
+      build_output: ${{ inputs.build_output }}
+      buildkit_image: ${{ inputs.buildkit_image }}
+      cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
+      rust_target_cache: ${{ inputs.rust_target_cache }}
+    secrets: inherit
 
   boringcache-native:
-    name: BoringCache + toolcache (${{ matrix.arch }})
-    if: ${{ needs.case.outputs.native_matrix_enabled == 'true' && (inputs.lane_filter == 'all' || inputs.lane_filter == 'buildkit') }}
+    name: BC / ${{ matrix.arch }}
+    if: needs.case.outputs.native_matrix_enabled == 'true'
     needs: case
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.case.outputs.native_matrix) }}
-    runs-on: ${{ matrix.runner_label }}
-    timeout-minutes: 180
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BORINGCACHE_RESTORE_TOKEN: ${{ secrets.BORINGCACHE_RESTORE_TOKEN }}
-      BORINGCACHE_SAVE_TOKEN: ${{ secrets.BORINGCACHE_SAVE_TOKEN }}
-      BORINGCACHE_GHCR_READ_USER: ${{ vars.BORINGCACHE_GHCR_READ_USER || github.actor }}
-      BORINGCACHE_GHCR_READ_TOKEN: ${{ secrets.BORINGCACHE_GHCR_READ_TOKEN }}
-      PROJECT_REPO: ${{ needs.case.outputs.project_repo }}
-      PROJECT_REF: ${{ needs.case.outputs.project_ref }}
-      CASE_ID: ${{ needs.case.outputs.case_id }}
-      CASE_REF_KEY: ${{ needs.case.outputs.case_ref_key }}
-      BENCHMARK_ID: ${{ format('{0}-{1}{2}-bc', needs.case.outputs.benchmark_id, matrix.arch, inputs.rust_target_cache && '-target' || '') }}
-      CACHE_ID: ${{ format('{0}-{1}', needs.case.outputs.cache_id, matrix.arch) }}
-      BENCHMARK_WORKSPACE: boringcache/docker-cache-proof
-      CACHE_LANE: ${{ inputs.cache_lane }}
-      CACHE_SCOPE_SUFFIX: ${{ format('-{0}-{1}', needs.case.outputs.case_id, matrix.arch) }}
-      DOCKER_BUILD_EXTRA_ARGS: |
-        ${{ needs.case.outputs.docker_build_extra_args }}
-        --platform=${{ matrix.platform }}
-      BENCHMARK_BUILD_OUTPUT: ${{ inputs.build_output }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          submodules: false
-      - name: Free disk space
-        if: ${{ needs.case.outputs.free_disk_space == 'true' }}
-        run: ./scripts/free-runner-disk.sh
-      - name: Run native BoringCache proof
-        uses: ./.github/actions/docker-case-benchmark
-        with:
-          strategy: boringcache
-          cache_lane: ${{ inputs.cache_lane }}
-          benchmark_id: ${{ format('{0}-{1}{2}-bc', needs.case.outputs.benchmark_id, matrix.arch, inputs.rust_target_cache && '-target' || '') }}
-          cache_id: ${{ format('{0}-{1}', needs.case.outputs.cache_id, matrix.arch) }}
-          cache_scope_suffix: ${{ format('-{0}-{1}{2}{3}', needs.case.outputs.case_id, matrix.arch, inputs.rust_target_cache && '-target' || '', needs.case.outputs.cache_scope_suffix) }}
-          case_id: ${{ needs.case.outputs.case_id }}
-          case_ref_key: ${{ needs.case.outputs.case_ref_key }}
-          project_repo: ${{ needs.case.outputs.project_repo }}
-          project_ref: ${{ needs.case.outputs.project_ref }}
-          docker_build_family: ${{ needs.case.outputs.docker_build_family }}
-          dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
-          docker_context: ${{ needs.case.outputs.docker_context }}
-          image_tag: ${{ format('{0}-{1}', needs.case.outputs.image_tag, matrix.arch) }}
-          docker_build_extra_args: |
-            ${{ needs.case.outputs.docker_build_extra_args }}
-            --platform=${{ matrix.platform }}
-          docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
-          rust_target_cache: ${{ inputs.rust_target_cache && 'true' || 'false' }}
-          rust_target_cache_id_pattern: ${{ needs.case.outputs.rust_target_cache_id_pattern }}
-          build_output: ${{ inputs.build_output }}
-          runner_label: ${{ matrix.runner_label }}
-          cli_platform: ${{ matrix.cli_platform }}
-          cli_version: ${{ inputs.cli_version }}
-          prune_builder: ${{ needs.case.outputs.prune_builder }}
-          setup_qemu: 'false'
-          buildkit_image: ${{ inputs.buildkit_image }}
-
-  publish-native-manifest:
-    name: Publish native multi-arch manifest
-    if: ${{ needs.case.outputs.native_matrix_enabled == 'true' && inputs.build_output == 'ghcr' }}
-    needs: [case, boringcache-native]
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v4.2.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Join native architecture images
-        env:
-          IMAGE_TAG: ${{ needs.case.outputs.image_tag }}
-        run: |
-          set -euo pipefail
-          docker buildx imagetools create \
-            --tag "$IMAGE_TAG" \
-            "${IMAGE_TAG}-amd64" \
-            "${IMAGE_TAG}-arm64"
-          docker buildx imagetools inspect "$IMAGE_TAG"
+    uses: ./.github/workflows/reusable-docker-product-proof.yml
+    with:
+      cache_lane: ${{ inputs.cache_lane }}
+      case_id: ${{ needs.case.outputs.case_id }}
+      case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+      benchmark_id: ${{ needs.case.outputs.benchmark_id }}
+      cache_id: ${{ needs.case.outputs.cache_id }}
+      project_repo: ${{ needs.case.outputs.project_repo }}
+      project_ref: ${{ needs.case.outputs.project_ref }}
+      dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
+      docker_context: ${{ needs.case.outputs.docker_context }}
+      image_repository: ${{ needs.case.outputs.image_repository }}
+      image_tag: ${{ needs.case.outputs.image_tag }}-${{ matrix.arch }}
+      target: ${{ needs.case.outputs.target }}
+      platforms: ${{ matrix.platform }}
+      build_args: ${{ needs.case.outputs.build_args }}
+      docker_tool_cache: ${{ needs.case.outputs.docker_tool_cache }}
+      sbom: ${{ needs.case.outputs.sbom == 'true' }}
+      provenance: ${{ needs.case.outputs.provenance == 'true' }}
+      cli_version: ${{ inputs.cli_version || needs.case.outputs.cli_version }}
+      cli_platform: ${{ matrix.cli_platform }}
+      runner_label: ${{ matrix.runner_label }}
+      free_disk_space: ${{ needs.case.outputs.free_disk_space == 'true' }}
+      setup_qemu: false
+      build_output: ${{ inputs.build_output }}
+      buildkit_image: ${{ inputs.buildkit_image }}
+      cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
+      rust_target_cache: ${{ inputs.rust_target_cache }}
+    secrets: inherit

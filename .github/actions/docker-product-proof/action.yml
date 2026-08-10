@@ -7,6 +7,8 @@ inputs:
   case_ref_key: {required: true}
   benchmark_id: {required: true}
   cache_id: {required: true}
+  fidelity_level: {required: true}
+  plan_directory: {required: true}
   dockerfile_path: {required: true}
   docker_context: {required: true}
   image_repository: {required: true}
@@ -35,6 +37,12 @@ runs:
     - name: Prepare the pinned workload
       shell: bash
       run: ./scripts/prepare-case-source.sh "${{ inputs.case_id }}" "${{ inputs.case_ref_key }}"
+    - name: Verify the pinned upstream workflow anchor
+      shell: bash
+      run: >-
+        python3 ./scripts/verify-upstream-recipe.py
+        --case "${{ inputs.case_id }}"
+        --source ".work/${{ inputs.case_id }}/source"
     - name: Select the cache cohort
       id: scope
       shell: bash
@@ -43,6 +51,7 @@ runs:
         CACHE_ID: ${{ inputs.cache_id }}
         REQUESTED_TOOL_CACHE: ${{ inputs.docker_tool_cache }}
         SCOPE_SUFFIX: ${{ inputs.cache_scope_suffix }}
+        PLAN_DIRECTORY: ${{ inputs.plan_directory }}
       run: |
         set -euo pipefail
         ref_slug="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
@@ -50,7 +59,7 @@ runs:
         ref_slug="${ref_slug%-}"
         ref_slug="${ref_slug:-main}"
         if [[ "$CACHE_LANE" == "rolling" ]]; then cache_scope="${CACHE_ID}-rolling-${ref_slug}${SCOPE_SUFFIX}"; else cache_scope="${CACHE_ID}-run-r${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}${SCOPE_SUFFIX}"; fi
-        ./scripts/scope-boringcache-run.sh "$cache_scope"
+        ./scripts/scope-boringcache-run.sh "$cache_scope" "$PLAN_DIRECTORY"
         docker_tool_cache="${REQUESTED_TOOL_CACHE//\{CACHE_SCOPE\}/$cache_scope}"
         {
           echo "cache_scope=${cache_scope}"
@@ -91,8 +100,9 @@ runs:
         provenance: ${{ inputs.provenance == 'true' }}
         docker-tool-cache: ${{ steps.scope.outputs.docker_tool_cache }}
         fail-on-cache-error: true
-        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},phase=${{ inputs.cache_lane == 'rolling' && 'rolling' || 'fresh-cold' }}
+        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},fidelity=${{ inputs.fidelity_level }},phase=${{ inputs.cache_lane == 'rolling' && 'rolling' || 'fresh-cold' }}
         managed-buildkit-image: ${{ inputs.buildkit_image }}
+        working-directory: ${{ inputs.plan_directory }}
     - name: Restore BoringCache on a fresh runner
       if: inputs.phase == 'warm'
       uses: boringcache/one@ab52a39d3d7358c22b359a6ffbf86cf74be9bf56 # v1 / 1.18.1
@@ -120,8 +130,9 @@ runs:
         docker-tool-cache: ${{ steps.scope.outputs.docker_tool_cache }}
         fail-on-cache-miss: true
         fail-on-cache-error: true
-        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},phase=fresh-warm
+        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},fidelity=${{ inputs.fidelity_level }},phase=fresh-warm
         managed-buildkit-image: ${{ inputs.buildkit_image }}
+        working-directory: ${{ inputs.plan_directory }}
     - name: Verify the loaded image
       if: inputs.build_output == 'load'
       shell: bash

@@ -1,7 +1,11 @@
 {
   "id": "misskey-develop-amd64",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "misskey-dev/misskey",
+    "workflow": ".github/workflows/docker-develop.yml",
     "pain_url": "https://github.com/misskey-dev/misskey/actions/runs/29795853045",
     "evidence_run": "https://github.com/misskey-dev/misskey/actions/runs/29795853045/job/88526918315",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -12,6 +16,7 @@
     "rolling1": "b51d5ba0a085f1b72aa206ef64d1acc890185ec5"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "misskey-develop-amd64",

@@ -1,8 +1,12 @@
 {
   "id": "nmisp-nightly",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "name": "nmisp nightly test image",
   "source": {
     "repo": "kangwonlee/nmisp",
+    "workflow": ".github/workflows/build-test-image.yml",
     "pain_url": "https://github.com/kangwonlee/nmisp/issues/370",
     "evidence_run": "https://github.com/kangwonlee/nmisp/actions/runs/24956177996/job/73074709808",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -14,6 +18,7 @@
     "graduation-head": "1177d6062e41fd843d37032702c610a6a385c6a9"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "docker/Dockerfile.nmisp-test",
     "image": "nmisp-nightly",

@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-stirling-pdf-embedded"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=stirling-pdf-embedded", "source-ref=main"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/stirling-pdf-embedded/source/docker/embedded/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "VERSION_TAG=bda9cebc5cfca36b3b365f3c79985d64a535d92c",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/stirling-pdf-embedded-proof:main",
+  "../../../../.work/stirling-pdf-embedded/source/.",
+]

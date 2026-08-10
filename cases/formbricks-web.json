@@ -1,7 +1,11 @@
 {
   "id": "formbricks-web",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "formbricks/formbricks",
+    "workflow": ".github/workflows/docker-build-validation.yml",
     "pain_url": "https://github.com/formbricks/formbricks/actions/runs/29744679758",
     "evidence_run": "https://github.com/formbricks/formbricks/actions/runs/29744679758/job/88359620840",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -13,6 +17,7 @@
     "rolling2": "8f47cfc5ee9efbfb978e03ba5c9021ce413f777e"
   },
   "docker": {
+    "output": "load",
     "context": ".",
     "dockerfile": "apps/web/Dockerfile",
     "image": "formbricks-web",

@@ -1,7 +1,11 @@
 {
   "id": "pythonitalia-pycon-pretix",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "pythonitalia/pycon",
+    "workflow": ".github/workflows/build-pretix.yml",
     "pain_url": "https://github.com/pythonitalia/pycon/issues/4536",
     "runner": "GitHub-hosted ubuntu-24.04-arm"
   },
@@ -12,6 +16,7 @@
     "rolling2": "4945e5879a0880e89343591a198e992e4adf1e03"
   },
   "docker": {
+    "output": "ghcr",
     "context": "pretix",
     "dockerfile": "pretix/Dockerfile",
     "image": "pythonitalia-pycon-pretix",

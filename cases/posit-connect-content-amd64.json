@@ -1,8 +1,12 @@
 {
   "id": "posit-connect-content-amd64",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
   "name": "Posit Connect content base image (amd64)",
   "source": {
     "repo": "posit-dev/images-connect",
+    "workflow": ".github/workflows/content.yml",
     "pain_url": "https://github.com/posit-dev/images-shared/issues/681",
     "evidence_run": "https://github.com/posit-dev/images-connect/actions/runs/30313698156/job/90283968450",
     "runner": "Posit uses a larger GitHub-hosted runner; this proof uses GitHub-hosted ubuntu-24.04"
@@ -16,6 +20,7 @@
     "rolling4": "a629ff884db05c69d7947dca6ae6113db6b915cf"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "connect-content/matrix/Containerfile.ubuntu2404.base",
     "image": "posit-connect-content-amd64",

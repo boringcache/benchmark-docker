@@ -1,8 +1,12 @@
 {
   "id": "proteus-controller-multiarch",
+  "fidelity": {
+    "level": "diagnostic-overlay"
+  },
   "name": "Proteus multi-arch controller with target and sccache",
   "source": {
     "repo": "CraftingTech/proteus",
+    "workflow": ".github/workflows/image.yml",
     "pain_url": "https://github.com/CraftingTech/proteus/issues/45",
     "evidence_run": "https://github.com/CraftingTech/proteus/actions/runs/30160511674",
     "runner": "GitHub-hosted native amd64 + arm64 matrix"
@@ -14,6 +18,7 @@
     "rolling3": "512c35cbdd05a4e783a1818b41e3762e9bdb5bc8"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "deploy/Dockerfile.boringcache-proof",
     "overlay_dockerfile": "overlays/proteus-controller-multiarch/Dockerfile",

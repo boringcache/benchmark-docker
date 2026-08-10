@@ -1,7 +1,11 @@
 {
   "id": "stirling-pdf-embedded",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "Stirling-Tools/Stirling-PDF",
+    "workflow": ".github/workflows/push-docker.yml",
     "pain_url": "https://github.com/Stirling-Tools/Stirling-PDF/actions/runs/29758033815",
     "evidence_run": "https://github.com/Stirling-Tools/Stirling-PDF/actions/runs/29758033815/job/88405425988",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -13,6 +17,7 @@
     "rolling2": "bda9cebc5cfca36b3b365f3c79985d64a535d92c"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "docker/embedded/Dockerfile",
     "image": "stirling-pdf-embedded",

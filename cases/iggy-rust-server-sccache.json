@@ -1,8 +1,12 @@
 {
   "id": "iggy-rust-server-sccache",
+  "fidelity": {
+    "level": "diagnostic-overlay"
+  },
   "name": "Apache Iggy server image with container-side sccache",
   "source": {
     "repo": "apache/iggy",
+    "workflow": ".github/workflows/publish.yml",
     "pain_url": "https://github.com/apache/iggy/commit/57fbe04a3191d0295a2ff492b447c0b86ced862b",
     "evidence_run": "https://github.com/apache/iggy/actions/runs/24415263274",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -17,6 +21,7 @@
     "graduation-head": "6f1d5485d06c3c43afd2510e432b2f7c1a3ac41a"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "core/server/Dockerfile.boringcache-sccache",
     "overlay_dockerfile": "overlays/iggy-rust-server-sccache/Dockerfile",

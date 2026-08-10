@@ -1,0 +1,22 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-kvrocks-docker-sccache"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=kvrocks-docker-sccache", "source-ref=graduation-base"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/kvrocks-docker-sccache/source/Dockerfile.boringcache-sccache",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "MORE_BUILD_ARGS=-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache",
+  "--tag",
+  "cache-proof/kvrocks-sccache:graduation-base",
+  "../../../../.work/kvrocks-docker-sccache/source/.",
+]

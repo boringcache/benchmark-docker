@@ -1,7 +1,11 @@
 {
   "id": "karakeep-aio",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "karakeep-app/karakeep",
+    "workflow": ".github/workflows/docker.yml",
     "pain_url": "https://github.com/karakeep-app/karakeep/pull/2140",
     "evidence_run": "https://github.com/karakeep-app/karakeep/actions/runs/29655698063/job/88109521077",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -12,6 +16,7 @@
     "rolling1": "e8a138f103d49e1c3dc9fd3b700b5ba9efedddc7"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "docker/Dockerfile",
     "target": "aio",

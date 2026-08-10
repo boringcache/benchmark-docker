@@ -1,7 +1,11 @@
 {
   "id": "mozilla-fxa-mono",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "mozilla/fxa",
+    "workflow": ".github/workflows/docker.yml",
     "pain_url": "https://github.com/mozilla/fxa/pull/19848",
     "runner": "GitHub-hosted ubuntu-latest"
   },
@@ -30,6 +34,7 @@
     }
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "_dev/docker/mono/Dockerfile",
     "image": "mozilla-fxa-mono",

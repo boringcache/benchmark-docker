@@ -1,0 +1,21 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-windmill-extra"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=windmill-extra"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../.work/windmill-extra/source/docker/DockerfileExtra",
+  "--platform",
+  "linux/amd64",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/windmill-extra-proof:main",
+  "../../.work/windmill-extra/source/.",
+]

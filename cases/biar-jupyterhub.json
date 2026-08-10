@@ -1,7 +1,11 @@
 {
   "id": "biar-jupyterhub",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "tazama-lf/biar",
+    "workflow": ".github/workflows/dockerhub-image-build-multi.yml",
     "pain_url": "https://github.com/tazama-lf/biar/issues/142",
     "evidence_run": "https://github.com/tazama-lf/biar/actions/runs/30026601442",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -15,6 +19,7 @@
     "rolling4": "657ad9487e61a519b13bacbe20a3acbb7121316a"
   },
   "docker": {
+    "output": "ghcr",
     "context": "JupyterHub",
     "dockerfile": "JupyterHub/Dockerfile",
     "image": "biar-jupyterhub",

@@ -1,7 +1,11 @@
 {
   "id": "omninode-runtime",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "OmniNode-ai/omnibase_infra",
+    "workflow": ".github/workflows/docker-build.yml",
     "pain_url": "https://github.com/OmniNode-ai/omnibase_infra/pull/567",
     "evidence_run": "https://github.com/OmniNode-ai/omnibase_infra/pull/567",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -12,6 +16,7 @@
     "rolling1": "7d624a5c995b7d282f001430feb5ab912fcf6cfc"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "docker/Dockerfile.runtime",
     "image": "omninode-runtime",

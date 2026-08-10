@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-iggy-rust-server-sccache"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=iggy-rust-server-sccache", "source-ref=graduation-base"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/iggy-rust-server-sccache/source/core/server/Dockerfile.boringcache-sccache",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "IGGY_CI_BUILD=true",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/iggy-rust-server-sccache-proof:graduation-base",
+  "../../../../.work/iggy-rust-server-sccache/source/.",
+]

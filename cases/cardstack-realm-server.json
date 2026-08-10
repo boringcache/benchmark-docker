@@ -1,8 +1,12 @@
 {
   "id": "cardstack-realm-server",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
   "name": "Cardstack Boxel realm-server image",
   "source": {
     "repo": "cardstack/boxel",
+    "workflow": ".github/workflows/manual-deploy.yml",
     "evidence_run": "https://github.com/cardstack/boxel/actions/runs/25861223646",
     "runner": "GitHub-hosted ubuntu-24.04"
   },
@@ -16,6 +20,7 @@
     "graduation-head": "a5e2a714fe6a7b3e7805d291268a5866c8c31560"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "packages/realm-server/realm-server.Dockerfile",
     "image": "cardstack-realm-server",

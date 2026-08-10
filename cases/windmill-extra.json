@@ -1,7 +1,11 @@
 {
   "id": "windmill-extra",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "windmill-labs/windmill",
+    "workflow": ".github/workflows/publish_extra.yml",
     "pain_url": "https://github.com/windmill-labs/windmill/actions/runs/30081039014",
     "evidence_run": "https://github.com/windmill-labs/windmill/actions/runs/30081039014/job/89445412474",
     "runner": "Ubicloud standard-8"
@@ -13,6 +17,7 @@
     "rolling2": "c24d6f9d11db8df295b019f10d08b85b1f81cea2"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "docker/DockerfileExtra",
     "image": "windmill-extra",

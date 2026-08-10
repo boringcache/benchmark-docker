@@ -1,8 +1,12 @@
 {
   "id": "dependabot-updater-core",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
   "name": "Dependabot updater core image",
   "source": {
     "repo": "dependabot/dependabot-core",
+    "workflow": ".github/workflows/smoke.yml",
     "pain_url": "https://github.com/dependabot/dependabot-core/issues/14914",
     "evidence_run": "https://github.com/dependabot/dependabot-core/actions/runs/27011845235",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -16,6 +20,7 @@
     "graduation-head": "13373b3c82dc08ab019ae153aaa9af1aa50eec6f"
   },
   "docker": {
+    "output": "load",
     "context": ".",
     "dockerfile": "Dockerfile.updater-core",
     "image": "dependabot-updater-core",

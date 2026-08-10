@@ -1,0 +1,21 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-wormhole-solana"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=wormhole-solana", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/wormhole-solana/source/solana/Dockerfile",
+  "--target",
+  "builder",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/wormhole-solana-proof:rolling1",
+  "../../../../.work/wormhole-solana/source/.",
+]

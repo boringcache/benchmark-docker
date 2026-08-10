@@ -1,8 +1,12 @@
 {
   "id": "tiled-container-canary",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "name": "Bluesky Tiled multi-platform container",
   "source": {
     "repo": "bluesky/tiled",
+    "workflow": ".github/workflows/ci.yml",
     "pain_url": "https://github.com/bluesky/tiled/issues/1454",
     "evidence_run": "https://github.com/bluesky/tiled/actions/runs/30610469144/job/91091895475",
     "runner": "GitHub-hosted ubuntu-24.04"
@@ -16,6 +20,7 @@
     "rolling4": "14a4368c35e24172d008e8b0486a15d804010b9a"
   },
   "docker": {
+    "output": "none",
     "context": ".",
     "dockerfile": "Containerfile",
     "image": "tiled-container-canary",

@@ -4,11 +4,6 @@ set -euo pipefail
 case_file="${1:?case file is required}"
 ref="${2:?case ref is required}"
 
-if [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then
-  printf '%s\n' "$ref"
-  exit 0
-fi
-
 resolved_ref="$(jq -r --arg key "$ref" '.refs[$key] // empty' "$case_file")"
 if [[ ! "$resolved_ref" =~ ^[0-9a-f]{40}$ ]]; then
   echo "Unknown or invalid case ref: ${ref}" >&2

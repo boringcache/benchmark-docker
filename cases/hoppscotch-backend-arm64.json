@@ -1,7 +1,11 @@
 {
   "id": "hoppscotch-backend-arm64",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "hoppscotch/hoppscotch",
+    "workflow": ".github/workflows/release-push-docker.yml",
     "pain_url": "https://github.com/hoppscotch/hoppscotch/actions/runs/29410411043",
     "evidence_run": "https://github.com/hoppscotch/hoppscotch/actions/runs/29410411043/job/87335877176",
     "runner": "GitHub-hosted ubuntu-24.04-arm"
@@ -13,6 +17,7 @@
     "rolling2": "3e75a2c9579bf0f1f0ca3459fa71750cefcdfa6c"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "prod.Dockerfile",
     "image": "hoppscotch-backend-arm64",

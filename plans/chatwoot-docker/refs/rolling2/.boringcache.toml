@@ -1,0 +1,20 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-chatwoot-docker"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=chatwoot-docker", "source-ref=rolling2"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/chatwoot-docker/source/docker/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--tag",
+  "cache-proof/chatwoot-docker:rolling2",
+  "../../../../.work/chatwoot-docker/source/.",
+]

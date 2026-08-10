@@ -1,6 +1,6 @@
 name: "Docker Product Proof"
 run-name: >-
-  ${{ format('{0} | {1} | {2} | output={3} | rust-target={4}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.build_output, inputs.rust_target_cache && 'on' || 'off') }}
+  ${{ format('{0} | {1} | {2} | rust-target={3}', inputs.case_id, inputs.ref_key, inputs.cache_lane, inputs.rust_target_cache && 'on' || 'off') }}
 
 on:
   workflow_dispatch:
@@ -58,7 +58,7 @@ on:
           - windmill-extra
           - wormhole-solana
       ref_key:
-        description: "Pinned case ref name or exact source SHA."
+        description: "Committed case ref plan name."
         required: true
         type: string
         default: main
@@ -68,12 +68,6 @@ on:
         type: choice
         default: fresh
         options: [fresh, rolling]
-      build_output:
-        description: "Image output mode."
-        required: true
-        type: choice
-        default: none
-        options: [none, load, ghcr]
       buildkit_image:
         description: "Optional managed BoringCache BuildKit image."
         required: false
@@ -114,6 +108,8 @@ jobs:
       case_ref_key: ${{ steps.case.outputs.case_ref_key }}
       benchmark_id: ${{ steps.case.outputs.benchmark_id }}
       cache_id: ${{ steps.case.outputs.cache_id }}
+      fidelity_level: ${{ steps.case.outputs.fidelity_level }}
+      plan_directory: ${{ steps.case.outputs.plan_directory }}
       project_repo: ${{ steps.case.outputs.project_repo }}
       project_ref: ${{ steps.case.outputs.project_ref }}
       dockerfile_path: ${{ steps.case.outputs.dockerfile_path }}
@@ -134,11 +130,13 @@ jobs:
       rust_target_cache_kind: ${{ steps.case.outputs.rust_target_cache_kind }}
       native_matrix: ${{ steps.case.outputs.native_matrix }}
       native_matrix_enabled: ${{ steps.case.outputs.native_matrix_enabled }}
+      build_output: ${{ steps.case.outputs.build_output }}
       cache_scope_suffix: ${{ steps.suffix.outputs.value }}
     steps:
       - uses: actions/checkout@v6
+      - run: python3 ./scripts/verify-upstream-recipe.py
       - id: case
-        run: ./scripts/emit-case-outputs.sh "${{ inputs.case_id }}" "${{ inputs.ref_key }}" "${{ inputs.build_output }}"
+        run: ./scripts/emit-case-outputs.sh "${{ inputs.case_id }}" "${{ inputs.ref_key }}"
       - id: suffix
         env:
           REQUESTED_SUFFIX: ${{ inputs.cache_scope_suffix }}
@@ -175,6 +173,8 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
+          fidelity_level: ${{ needs.case.outputs.fidelity_level }}
+          plan_directory: ${{ needs.case.outputs.plan_directory }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_repository: ${{ needs.case.outputs.image_repository }}
@@ -189,7 +189,7 @@ jobs:
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           free_disk_space: ${{ needs.case.outputs.free_disk_space }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          build_output: ${{ inputs.build_output }}
+          build_output: ${{ needs.case.outputs.build_output }}
           buildkit_image: ${{ inputs.buildkit_image }}
           cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
           rust_target_cache: ${{ inputs.rust_target_cache }}
@@ -211,6 +211,8 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
+          fidelity_level: ${{ needs.case.outputs.fidelity_level }}
+          plan_directory: ${{ needs.case.outputs.plan_directory }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_repository: ${{ needs.case.outputs.image_repository }}
@@ -225,7 +227,7 @@ jobs:
           cli_platform: ${{ needs.case.outputs.cli_platform }}
           free_disk_space: ${{ needs.case.outputs.free_disk_space }}
           setup_qemu: ${{ needs.case.outputs.setup_qemu }}
-          build_output: ${{ inputs.build_output }}
+          build_output: ${{ needs.case.outputs.build_output }}
           buildkit_image: ${{ inputs.buildkit_image }}
           cache_scope_suffix: ${{ needs.case.outputs.cache_scope_suffix }}
           rust_target_cache: ${{ inputs.rust_target_cache }}
@@ -250,6 +252,8 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
+          fidelity_level: ${{ needs.case.outputs.fidelity_level }}
+          plan_directory: ${{ needs.case.outputs.plan_directory }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_repository: ${{ needs.case.outputs.image_repository }}
@@ -264,7 +268,7 @@ jobs:
           cli_platform: ${{ matrix.cli_platform }}
           free_disk_space: ${{ needs.case.outputs.free_disk_space }}
           setup_qemu: "false"
-          build_output: ${{ inputs.build_output }}
+          build_output: ${{ needs.case.outputs.build_output }}
           buildkit_image: ${{ inputs.buildkit_image }}
           cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
           rust_target_cache: ${{ inputs.rust_target_cache }}
@@ -289,6 +293,8 @@ jobs:
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
+          fidelity_level: ${{ needs.case.outputs.fidelity_level }}
+          plan_directory: ${{ needs.case.outputs.plan_directory }}
           dockerfile_path: ${{ needs.case.outputs.dockerfile_path }}
           docker_context: ${{ needs.case.outputs.docker_context }}
           image_repository: ${{ needs.case.outputs.image_repository }}
@@ -303,7 +309,7 @@ jobs:
           cli_platform: ${{ matrix.cli_platform }}
           free_disk_space: ${{ needs.case.outputs.free_disk_space }}
           setup_qemu: "false"
-          build_output: ${{ inputs.build_output }}
+          build_output: ${{ needs.case.outputs.build_output }}
           buildkit_image: ${{ inputs.buildkit_image }}
           cache_scope_suffix: ${{ format('{0}-{1}', needs.case.outputs.cache_scope_suffix, matrix.arch) }}
           rust_target_cache: ${{ inputs.rust_target_cache }}

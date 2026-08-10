@@ -1,0 +1,21 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-auto-mobile-docker"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=auto-mobile-docker", "source-ref=rolling2"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/auto-mobile-docker/source/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/auto-mobile-docker-proof:rolling2",
+  "../../../../.work/auto-mobile-docker/source/.",
+]

@@ -1,7 +1,11 @@
 {
   "id": "supabase-studio",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "supabase/supabase",
+    "workflow": ".github/workflows/publish_image.yml",
     "pain_url": "https://github.com/supabase/supabase/actions/runs/29718726330",
     "evidence_run": "https://github.com/supabase/supabase/actions/runs/29718726330/job/88276984110",
     "runner": "Blacksmith 4 vCPU AMD64"
@@ -13,6 +17,7 @@
     "rolling2": "83e6552d71476f78779d9340787ee4162d36ef15"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "apps/studio/Dockerfile",
     "target": "production",

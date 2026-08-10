@@ -1,8 +1,12 @@
 {
   "id": "kvrocks-docker",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "name": "Apache Kvrocks Docker image",
   "source": {
     "repo": "apache/kvrocks",
+    "workflow": ".github/workflows/kvrocks.yaml",
     "evidence_run": "https://github.com/apache/kvrocks/actions/runs/26924643510",
     "runner": "GitHub-hosted ubuntu-24.04"
   },
@@ -15,6 +19,7 @@
     "graduation-head": "634ed15dfd9249cfb57a52541dddba05b377df0a"
   },
   "docker": {
+    "output": "none",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "kvrocks",

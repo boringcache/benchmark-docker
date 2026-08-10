@@ -1,7 +1,11 @@
 {
   "id": "auto-mobile-docker",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "kaeawc/auto-mobile",
+    "workflow": ".github/workflows/merge.yml",
     "pain_url": "https://github.com/kaeawc/auto-mobile/issues/640",
     "evidence_run": "https://github.com/kaeawc/auto-mobile/actions/runs/20904260051/job/60055768837",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -13,6 +17,7 @@
     "rolling2": "3db151412bf714d755b01656fde5f0f775305a27"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "auto-mobile-docker",

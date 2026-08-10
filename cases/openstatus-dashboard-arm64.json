@@ -1,7 +1,11 @@
 {
   "id": "openstatus-dashboard-arm64",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "openstatusHQ/openstatus",
+    "workflow": ".github/workflows/docker-publish.yml",
     "pain_url": "https://github.com/openstatusHQ/openstatus/actions/runs/29770045286",
     "evidence_run": "https://github.com/openstatusHQ/openstatus/actions/runs/29770045286/job/88445656341",
     "runner": "GitHub-hosted ubuntu-24.04-arm (native ARM64)"
@@ -12,6 +16,7 @@
     "rolling1": "5d5b7e29badf4f73b96b85e7c48a0dd544907087"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "apps/dashboard/Dockerfile",
     "image": "openstatus-dashboard-arm64",

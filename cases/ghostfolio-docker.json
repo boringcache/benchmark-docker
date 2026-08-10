@@ -1,7 +1,11 @@
 {
   "id": "ghostfolio-docker",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "ghostfolio/ghostfolio",
+    "workflow": ".github/workflows/docker-image.yml",
     "pain_url": "https://github.com/ghostfolio/ghostfolio/actions/runs/29765006006",
     "evidence_run": "https://github.com/ghostfolio/ghostfolio/actions/runs/29765006006/job/88428936554",
     "runner": "GitHub-hosted ubuntu-latest with QEMU"
@@ -13,6 +17,7 @@
     "rolling2": "89812199536426c4a899df3a0bd322c72db92170"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "ghostfolio-docker",

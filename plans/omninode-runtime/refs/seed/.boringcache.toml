@@ -1,0 +1,27 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-omninode-runtime"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=omninode-runtime", "source-ref=seed"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/omninode-runtime/source/docker/Dockerfile.runtime",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "RUNTIME_VERSION=benchmark",
+  "--build-arg",
+  "VCS_REF=a71937520bbd491cdb023aeb0331b540440a72c9",
+  "--build-arg",
+  "RUNTIME_SOURCE_HASH=a71937520bbd491cdb023aeb0331b540440a72c9",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/omninode-runtime-proof:seed",
+  "../../../../.work/omninode-runtime/source/.",
+]

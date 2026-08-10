@@ -1,8 +1,12 @@
 {
   "id": "wormhole-solana",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "name": "Wormhole NTT Solana contract image",
   "source": {
     "repo": "wormhole-foundation/native-token-transfers",
+    "workflow": ".github/workflows/tilt-images.yml",
     "evidence_run": "https://github.com/wormhole-foundation/native-token-transfers/actions/runs/26104579611/job/76764717136",
     "runner": "GitHub-hosted ubuntu-24.04"
   },
@@ -16,6 +20,7 @@
     "graduation-head": "fae2187c9bb2adb7eaf2cc294c0b18a49adc50dd"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "solana/Dockerfile",
     "target": "builder",

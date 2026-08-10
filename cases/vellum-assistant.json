@@ -1,7 +1,11 @@
 {
   "id": "vellum-assistant",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "vellum-ai/vellum-assistant",
+    "workflow": ".github/workflows/dev-release.yaml",
     "pain_url": "https://github.com/vellum-ai/vellum-assistant/pull/34998",
     "evidence_run": "https://github.com/vellum-ai/vellum-assistant/actions/runs/29803174296/job/88549285230",
     "runner": "GitHub-hosted 8-core AMD64"
@@ -12,6 +16,7 @@
     "rolling1": "6bd29cff2b5e853d4b9c540353077f1880c6ef0c"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "assistant/Dockerfile",
     "image": "vellum-assistant",

@@ -1,7 +1,11 @@
 {
   "id": "grist-oss",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "gristlabs/grist-core",
+    "workflow": ".github/workflows/docker_latest.yml",
     "pain_url": "https://github.com/gristlabs/grist-core/actions/runs/29722168278",
     "evidence_run": "https://github.com/gristlabs/grist-core/actions/runs/29722168278/job/88287251647",
     "runner": "GitHub-hosted ubuntu-22.04"
@@ -13,6 +17,7 @@
     "rolling2": "25b1637da86cce457051f4e46c9cab5ba55e85fb"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "grist-oss",

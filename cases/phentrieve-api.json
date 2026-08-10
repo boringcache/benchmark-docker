@@ -1,8 +1,12 @@
 {
   "id": "phentrieve-api",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "name": "Phentrieve API image",
   "source": {
     "repo": "berntpopp/phentrieve",
+    "workflow": ".github/workflows/docker-publish.yml",
     "evidence_run": "https://github.com/berntpopp/phentrieve/actions/runs/26311969942/job/77462686222",
     "runner": "GitHub-hosted ubuntu-24.04, 4 vCPU, 15.61 GiB"
   },
@@ -16,6 +20,7 @@
     "graduation-head": "04476bcc9ec73cb06b61217957005935f0b0dec7"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "api/Dockerfile",
     "image": "phentrieve-api",

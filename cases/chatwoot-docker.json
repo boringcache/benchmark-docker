@@ -1,7 +1,11 @@
 {
   "id": "chatwoot-docker",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "chatwoot/chatwoot",
+    "workflow": ".github/workflows/test_docker_build.yml",
     "pain_url": "https://github.com/chatwoot/chatwoot/actions/runs/29762401159",
     "evidence_run": "https://github.com/chatwoot/chatwoot/actions/runs/29762401159/job/88419967813",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -13,6 +17,7 @@
     "rolling2": "412319462a7c0388e769464b62b4113e19a96da4"
   },
   "docker": {
+    "output": "none",
     "context": ".",
     "dockerfile": "docker/Dockerfile",
     "image": "chatwoot-docker",

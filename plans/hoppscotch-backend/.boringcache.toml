@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-hoppscotch-backend"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=hoppscotch-backend"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../.work/hoppscotch-backend/source/prod.Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--target",
+  "backend",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/hoppscotch-backend-proof:main",
+  "../../.work/hoppscotch-backend/source/.",
+]

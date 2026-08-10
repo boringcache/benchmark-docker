@@ -1,7 +1,11 @@
 {
   "id": "teable-community",
+  "fidelity": {
+    "level": "direct-step"
+  },
   "source": {
     "repo": "teableio/teable",
+    "workflow": ".github/workflows/docker-push.yml",
     "pain_url": "https://github.com/teableio/teable/actions/runs/29639339391",
     "evidence_run": "https://github.com/teableio/teable/actions/runs/29639339391/job/88067090491",
     "runner": "GitHub-hosted ubuntu-latest"
@@ -13,6 +17,7 @@
     "rolling2": "6a69cfc84b8884e2dd3e40cd62e51292b1c9883f"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "dockers/teable/Dockerfile",
     "image": "teable-community",

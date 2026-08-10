@@ -1,8 +1,12 @@
 {
   "id": "cloudcost-exporter-amd64",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
   "name": "Grafana Cloud Cost Exporter image (amd64)",
   "source": {
     "repo": "grafana/cloudcost-exporter",
+    "workflow": ".github/workflows/build-on-feature-branch.yml",
     "pain_url": "https://github.com/grafana/cloudcost-exporter/issues/1029",
     "evidence_run": "https://github.com/grafana/cloudcost-exporter/actions/runs/27209558109/job/80335379406",
     "runner": "GitHub-hosted ubuntu-24.04"
@@ -16,6 +20,7 @@
     "rolling5": "580113c9610da388dda767eaa0acbf8d0cc2fbeb"
   },
   "docker": {
+    "output": "none",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "cloudcost-exporter-amd64",

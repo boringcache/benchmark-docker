@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-tiled-container-canary"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=tiled-container-canary", "source-ref=rolling2"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/tiled-container-canary/source/Containerfile",
+  "--platform",
+  "linux/amd64,linux/arm64",
+  "--build-arg",
+  "TILED_VERSION=0.0.0+d642062ac966fed9bff2549df50408568aedbdbe",
+  "--provenance=mode=max",
+  "--tag",
+  "cache-proof/tiled-container-canary:rolling2",
+  "../../../../.work/tiled-container-canary/source/.",
+]

@@ -1,7 +1,11 @@
 {
   "id": "supabase-storage-api-arm64",
+  "fidelity": {
+    "level": "matrix-member"
+  },
   "source": {
     "repo": "supabase/storage",
+    "workflow": ".github/workflows/release.yml",
     "pain_url": "https://github.com/supabase/storage/actions/runs/30003831969",
     "evidence_run": "https://github.com/supabase/storage/actions/runs/30003831969/job/89195263961",
     "runner": "GitHub-hosted ubuntu-24.04-arm (native ARM64)"
@@ -13,6 +17,7 @@
     "rolling2": "e845f9989124ec97bc0c6588abb3cd91a57447c8"
   },
   "docker": {
+    "output": "ghcr",
     "context": ".",
     "dockerfile": "Dockerfile",
     "image": "supabase-storage-api-arm64",

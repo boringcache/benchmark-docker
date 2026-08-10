@@ -74,10 +74,10 @@ def verify_catalog() -> int:
     case_ids = [case["id"] for case in cases]
     require(len(case_ids) == len(set(case_ids)), "case ids must be unique")
 
-    default_case = next(case for case in cases if case["id"] == "anythingllm-primary")
+    default_case = next(case for case in cases if case["id"] == "anythingllm-primary-arm64")
     root_adapter, root_command = load_command(ROOT / ".boringcache.toml")
     require(root_command == expected_command(default_case, "main", ""), "root Docker plan drifted from its documented default case")
-    require(root_adapter["tag"] == "docker-cache-proof-anythingllm-primary", "root cache identity drifted")
+    require(root_adapter["tag"] == "docker-cache-proof-anythingllm-primary-arm64", "root cache identity drifted")
 
     for case in cases:
         case_id = case["id"]

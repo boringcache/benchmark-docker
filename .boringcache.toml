@@ -1,18 +1,18 @@
 workspace = "boringcache/docker-cache-proof"
 
 [adapters.docker]
-tag = "docker-cache-proof-anythingllm-primary"
+tag = "docker-cache-proof-anythingllm-primary-arm64"
 no-platform = true
 no-git = true
 fail-on-cache-error = true
-metadata-hints = ["benchmark=docker-cache-proof", "case=anythingllm-primary"]
+metadata-hints = ["benchmark=docker-cache-proof", "case=anythingllm-primary-arm64"]
 command = [
   "docker", "buildx", "build",
-  "--file", ".work/anythingllm-primary/source/docker/Dockerfile",
-  "--platform", "linux/amd64,linux/arm64",
+  "--file", ".work/anythingllm-primary-arm64/source/docker/Dockerfile",
+  "--platform", "linux/arm64",
   "--sbom=true",
   "--provenance=mode=max",
   "--push",
-  "--tag", "ghcr.io/boringcache/anythingllm-primary-proof:main",
-  ".work/anythingllm-primary/source/.",
+  "--tag", "ghcr.io/boringcache/anythingllm-primary-arm64-proof:main",
+  ".work/anythingllm-primary-arm64/source/.",
 ]

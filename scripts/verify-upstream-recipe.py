@@ -111,6 +111,7 @@ def verify_catalog() -> int:
     require("plan_directory: ${{ steps.case.outputs.plan_directory }}" in workflow, "workflow does not expose the selected plan")
 
     action = (ROOT / ".github/actions/docker-product-proof/action.yml").read_text()
+    require("uses: actions/setup-python@v6" in action, "case runners do not provide Python 3.11+")
     require(action.count("working-directory: ${{ inputs.plan_directory }}") == 2, "both trust paths must consume the selected plan")
     require('scope-boringcache-run.sh "$cache_scope" "$PLAN_DIRECTORY"' in action, "cache cohort does not target the selected plan")
     emit = (ROOT / "scripts/emit-case-outputs.sh").read_text()
@@ -122,7 +123,11 @@ def verify_prepared(case_id: str, source: Path) -> None:
     case = json.loads((ROOT / "cases" / f"{case_id}.json").read_text())
     workflow = source / case["source"]["workflow"]
     require(workflow.is_file(), f"{case_id} pinned source has no {case['source']['workflow']}")
-    require("docker" in workflow.read_text().lower(), f"{case_id} upstream workflow no longer contains a Docker phase")
+    anchor = case["source"].get("anchor", "docker")
+    require(
+        anchor.lower() in workflow.read_text().lower(),
+        f"{case_id} upstream workflow no longer contains its {anchor!r} phase",
+    )
 
 
 def parse_args() -> argparse.Namespace:

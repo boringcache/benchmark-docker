@@ -7,6 +7,7 @@
   "source": {
     "repo": "dependabot/dependabot-core",
     "workflow": ".github/workflows/smoke.yml",
+    "anchor": "script/build",
     "pain_url": "https://github.com/dependabot/dependabot-core/issues/14914",
     "evidence_run": "https://github.com/dependabot/dependabot-core/actions/runs/27011845235",
     "runner": "GitHub-hosted ubuntu-latest"

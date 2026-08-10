@@ -34,6 +34,10 @@ runs:
       if: inputs.free_disk_space == 'true'
       shell: bash
       run: ./scripts/free-runner-disk.sh
+    - name: Set up the plan runtime
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
     - name: Prepare the pinned workload
       shell: bash
       run: ./scripts/prepare-case-source.sh "${{ inputs.case_id }}" "${{ inputs.case_ref_key }}"

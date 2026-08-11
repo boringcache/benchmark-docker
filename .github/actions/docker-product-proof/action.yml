@@ -80,7 +80,7 @@ runs:
         password: ${{ github.token }}
     - name: Publish BoringCache on the real Docker workload
       if: inputs.phase == 'publish'
-      uses: boringcache/one@ab52a39d3d7358c22b359a6ffbf86cf74be9bf56 # v1 / 1.18.1
+      uses: boringcache/one@1d01e5dbf19ce259f921aa353d5e3e4ac5f942e4 # v1 / 1.19.0
       env:
         BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache == 'true' && '1' || '' }}
       with:
@@ -109,7 +109,7 @@ runs:
         working-directory: ${{ inputs.plan_directory }}
     - name: Restore BoringCache on a fresh runner
       if: inputs.phase == 'warm'
-      uses: boringcache/one@ab52a39d3d7358c22b359a6ffbf86cf74be9bf56 # v1 / 1.18.1
+      uses: boringcache/one@1d01e5dbf19ce259f921aa353d5e3e4ac5f942e4 # v1 / 1.19.0
       env:
         BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache == 'true' && '1' || '' }}
       with:

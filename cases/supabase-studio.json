@@ -1,0 +1,31 @@
+{
+  "id": "supabase-studio",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "supabase/supabase",
+    "workflow": ".github/workflows/publish_image.yml",
+    "pain_url": "https://github.com/supabase/supabase/actions/runs/29718726330",
+    "evidence_run": "https://github.com/supabase/supabase/actions/runs/29718726330/job/88276984110",
+    "runner": "Blacksmith 4 vCPU AMD64"
+  },
+  "refs": {
+    "main": "ceb411056895d38665269d5afbe5cfe5d8a32587",
+    "seed": "64879ba4f2f36e4e48c73dca32cd6fe250e240b5",
+    "rolling1": "48640314669c5b144498345db2dfc47a68f01202",
+    "rolling2": "83e6552d71476f78779d9340787ee4162d36ef15"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "apps/studio/Dockerfile",
+    "target": "production",
+    "image": "supabase-studio",
+    "platform": "linux/amd64",
+    "original_cache": "type=gha,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

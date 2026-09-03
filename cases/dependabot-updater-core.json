@@ -1,0 +1,38 @@
+{
+  "id": "dependabot-updater-core",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
+  "name": "Dependabot updater core image",
+  "source": {
+    "repo": "dependabot/dependabot-core",
+    "workflow": ".github/workflows/smoke.yml",
+    "anchor": "script/build",
+    "pain_url": "https://github.com/dependabot/dependabot-core/issues/14914",
+    "evidence_run": "https://github.com/dependabot/dependabot-core/actions/runs/27011845235",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "00c6b122cd571e151155665e4f835879c72ea358",
+    "rolling1": "78f73b712be9f59ef1bc4afb9a9a19589ffd3c87",
+    "rolling2": "09669a4f96f19dd76a922179168aca940def37e6",
+    "rolling3": "c49984be32c190364fea8ca75ab1086dbe59b6f2",
+    "graduation-base": "e84a813262dff44f63b43820a7a42ff13616ab31",
+    "graduation-head": "13373b3c82dc08ab019ae153aaa9af1aa50eec6f"
+  },
+  "docker": {
+    "output": "load",
+    "context": ".",
+    "dockerfile": "Dockerfile.updater-core",
+    "image": "dependabot-updater-core",
+    "platform": "linux/amd64",
+    "build_args": [
+      "DEPENDABOT_UPDATER_VERSION=development"
+    ],
+    "original_cache": "type=gha,scope=updater-core"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-latest",
+    "free_disk_space": true
+  }
+}

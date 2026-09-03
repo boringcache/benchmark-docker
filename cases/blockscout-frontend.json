@@ -1,0 +1,37 @@
+{
+  "id": "blockscout-frontend",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
+  "source": {
+    "repo": "blockscout/frontend",
+    "workflow": ".github/workflows/deploy-review.yml",
+    "pain_url": "https://github.com/blockscout/frontend/issues/3602",
+    "evidence_run": "https://github.com/blockscout/frontend/actions/runs/30473737168",
+    "runner": "Blockscout uses a self-hosted runner; this proof uses GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "da93fdec5b11e61bb29be2ae040abe6ee901ed7e",
+    "seed": "8d6e447a60c4f30edafe2c9fff1379adf95ca98e",
+    "rolling1": "c3b79a0787b2197457e7273516699b72f8db5955",
+    "rolling2": "a204400d1a46137dcf53e7f34ec3508b7b0eed3e",
+    "rolling3": "3e8f4939ab7b33311d5ebc591bad03ec1bcb597c",
+    "rolling4": "39bb7b3e6e5d4b077cfd08f26a5e40e82e21b52a",
+    "rolling5": "da93fdec5b11e61bb29be2ae040abe6ee901ed7e"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "blockscout-frontend",
+    "platform": "linux/amd64",
+    "build_args": [
+      "GIT_COMMIT_SHA={PROJECT_REF}",
+      "GIT_TAG="
+    ],
+    "original_cache": "type=registry,ref=ghcr.io/blockscout/frontend-private:buildcache-linux-amd64,mode=max,image-manifest=true,oci-mediatypes=true,ignore-error=true"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

@@ -1,0 +1,25 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-blockscout-frontend"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=blockscout-frontend", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/blockscout-frontend/source/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "GIT_COMMIT_SHA=c3b79a0787b2197457e7273516699b72f8db5955",
+  "--build-arg",
+  "GIT_TAG=",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/blockscout-frontend-proof:rolling1",
+  "../../../../.work/blockscout-frontend/source/.",
+]

@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-supabase-storage-api"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=supabase-storage-api", "source-ref=seed"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/supabase-storage-api/source/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "VERSION=3948a518dc7fce6e0a8eaba9342cafb2d631ade3",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/supabase-storage-api-proof:seed",
+  "../../../../.work/supabase-storage-api/source/.",
+]

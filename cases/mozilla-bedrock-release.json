@@ -1,0 +1,35 @@
+{
+  "id": "mozilla-bedrock-release",
+  "fidelity": {
+    "level": "wrapper-projection"
+  },
+  "source": {
+    "repo": "mozilla/bedrock",
+    "workflow": ".github/workflows/build-and-push.yml",
+    "pain_url": "https://github.com/mozilla/bedrock/issues/16941",
+    "evidence_run": "https://github.com/mozilla/bedrock/actions/runs/29589233619",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "485216d94f62fd3787b1056539b4934329b0bd09",
+    "seed": "7319a90303280e1175f5ad4cb48500a58da63cc1",
+    "rolling1": "7369f5a504b270d15f745e02c8f034de08e96071",
+    "rolling2": "faaafa3101003ba5f62a051013e88ab9c65026d2",
+    "rolling3": "485216d94f62fd3787b1056539b4934329b0bd09"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "target": "release",
+    "image": "mozilla-bedrock-release",
+    "platform": "linux/amd64",
+    "build_args": [
+      "GIT_SHA={PROJECT_REF}"
+    ],
+    "original_cache": "type=gha,mode=max was intended but is currently passed as an invalid buildkitd-flags value"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

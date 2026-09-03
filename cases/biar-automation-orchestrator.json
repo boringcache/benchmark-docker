@@ -1,0 +1,32 @@
+{
+  "id": "biar-automation-orchestrator",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "tazama-lf/biar",
+    "workflow": ".github/workflows/dockerhub-image-build-multi.yml",
+    "pain_url": "https://github.com/tazama-lf/biar/issues/142",
+    "evidence_run": "https://github.com/tazama-lf/biar/actions/runs/30026601442",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "6d18d74dd184bb43fc4cf8e24313cd0fc5370f17",
+    "seed": "80dde97960f51730b35e77b581d1b91fbb470be6",
+    "rolling1": "22abde195f0174e63ca880e8e109d65a022bfdcd",
+    "rolling2": "6bdec9a62522f8c7643fa05152e6ff1055ba2eb0",
+    "rolling3": "4e9cd2518dd26f9ef88bd67c4d79aec4c5c33c27",
+    "rolling4": "657ad9487e61a519b13bacbe20a3acbb7121316a"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": "automation-orchestrator",
+    "dockerfile": "automation-orchestrator/Dockerfile",
+    "image": "biar-automation-orchestrator",
+    "platform": "linux/amd64",
+    "original_cache": "none in the painful run; current main uses type=gha,mode=min,scope=automation-orchestrator"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

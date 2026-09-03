@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-dependabot-updater-core"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=dependabot-updater-core", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/dependabot-updater-core/source/Dockerfile.updater-core",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "DEPENDABOT_UPDATER_VERSION=development",
+  "--load",
+  "--tag",
+  "cache-proof/dependabot-updater-core:rolling1",
+  "../../../../.work/dependabot-updater-core/source/.",
+]

@@ -1,0 +1,31 @@
+{
+  "id": "umami-release",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "umami-software/umami",
+    "workflow": ".github/workflows/cd.yml",
+    "pain_url": "https://github.com/umami-software/umami/commit/6061bcf14b24bb1dca52c065e6033a7a6c4f8a9b",
+    "evidence_run": "https://github.com/umami-software/umami/actions/runs/28136102295/job/83323168828",
+    "runner": "Blacksmith 4-vCPU Ubuntu 24.04"
+  },
+  "refs": {
+    "main": "6061bcf14b24bb1dca52c065e6033a7a6c4f8a9b",
+    "seed": "17bd781de54828964ef3c564a878b30712a3a78a",
+    "rolling1": "2f6e2b5ff256862a081d9e74bed18a42ebf795e3",
+    "rolling2": "6061bcf14b24bb1dca52c065e6033a7a6c4f8a9b"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "umami-release",
+    "platform": "linux/amd64,linux/arm64",
+    "original_cache": "type=gha,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true,
+    "setup_qemu": true
+  }
+}

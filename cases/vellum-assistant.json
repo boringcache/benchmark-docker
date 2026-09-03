@@ -1,0 +1,30 @@
+{
+  "id": "vellum-assistant",
+  "fidelity": {
+    "level": "matrix-member"
+  },
+  "source": {
+    "repo": "vellum-ai/vellum-assistant",
+    "workflow": ".github/workflows/dev-release.yaml",
+    "pain_url": "https://github.com/vellum-ai/vellum-assistant/pull/34998",
+    "evidence_run": "https://github.com/vellum-ai/vellum-assistant/actions/runs/29803174296/job/88549285230",
+    "runner": "GitHub-hosted 8-core AMD64"
+  },
+  "refs": {
+    "main": "6bd29cff2b5e853d4b9c540353077f1880c6ef0c",
+    "seed": "d95be073cacb00b2e4f025113c980448c9f41aa7",
+    "rolling1": "6bd29cff2b5e853d4b9c540353077f1880c6ef0c"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "assistant/Dockerfile",
+    "image": "vellum-assistant",
+    "platform": "linux/amd64",
+    "original_cache": "type=gha,mode=max,ignore-error=true,scope=assistant-dev-linux/amd64"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-latest",
+    "free_disk_space": true
+  }
+}

@@ -1,0 +1,20 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-cloudcost-exporter-amd64"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=cloudcost-exporter-amd64", "source-ref=rolling3"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/cloudcost-exporter-amd64/source/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--tag",
+  "cache-proof/cloudcost-exporter-amd64:rolling3",
+  "../../../../.work/cloudcost-exporter-amd64/source/.",
+]

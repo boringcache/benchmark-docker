@@ -1,0 +1,54 @@
+{
+  "id": "proteus-controller-multiarch",
+  "fidelity": {
+    "level": "diagnostic-overlay"
+  },
+  "name": "Proteus multi-arch controller with target and sccache",
+  "source": {
+    "repo": "CraftingTech/proteus",
+    "workflow": ".github/workflows/image.yml",
+    "pain_url": "https://github.com/CraftingTech/proteus/issues/45",
+    "evidence_run": "https://github.com/CraftingTech/proteus/actions/runs/30160511674",
+    "runner": "GitHub-hosted native amd64 + arm64 matrix"
+  },
+  "refs": {
+    "main": "71ac73a73c99bdc97fa88878ffc9474d589fa668",
+    "rolling1": "b3d6345e08cd5c77eae2e06ed97c2eeeed89e1a9",
+    "rolling2": "90663405cabb5661b8a9203609dcd8e452d91493",
+    "rolling3": "512c35cbdd05a4e783a1818b41e3762e9bdb5bc8"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "deploy/Dockerfile.boringcache-proof",
+    "overlay_dockerfile": "overlays/proteus-controller-multiarch/Dockerfile",
+    "image": "proteus-controller-multiarch",
+    "rust_target_cache": {
+      "kind": "buildkit-cache-mount",
+      "id_pattern": "^/?proteus-target-"
+    },
+    "original_cache": "type=gha,mode=max; image push succeeded before cache export failed with not_found",
+    "tool_cache": "sccache:{CACHE_SCOPE}-sccache"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-24.04",
+    "free_disk_space": true,
+    "setup_qemu": false,
+    "native_matrix": {
+      "include": [
+        {
+          "arch": "amd64",
+          "platform": "linux/amd64",
+          "runner_label": "ubuntu-24.04",
+          "cli_platform": "linux-amd64"
+        },
+        {
+          "arch": "arm64",
+          "platform": "linux/arm64",
+          "runner_label": "ubuntu-24.04-arm",
+          "cli_platform": "linux-arm64"
+        }
+      ]
+    }
+  }
+}

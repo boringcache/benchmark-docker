@@ -1,0 +1,30 @@
+{
+  "id": "heyform-community",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "HeyForm/heyform",
+    "workflow": ".github/workflows/publish-docker-image.yml",
+    "pain_url": "https://github.com/HeyForm/heyform/actions/runs/29302628301",
+    "evidence_run": "https://github.com/HeyForm/heyform/actions/runs/29302628301/job/86989382002",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "4bfca60ee1bbc215dc308bd918a50c6c8dfe77ab",
+    "seed": "7d68d872f795893a4179bc1e53454454ee7cd355",
+    "rolling1": "7e1dfd4c078eaf64223beb01878f5ed12c23d1c8",
+    "rolling2": "4bfca60ee1bbc215dc308bd918a50c6c8dfe77ab"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "heyform-community",
+    "platform": "linux/amd64",
+    "original_cache": "type=gha,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

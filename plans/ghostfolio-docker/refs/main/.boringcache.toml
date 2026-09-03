@@ -1,0 +1,21 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-ghostfolio-docker"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=ghostfolio-docker", "source-ref=main"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/ghostfolio-docker/source/Dockerfile",
+  "--platform",
+  "linux/amd64,linux/arm/v7,linux/arm64",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/ghostfolio-docker-proof:main",
+  "../../../../.work/ghostfolio-docker/source/.",
+]

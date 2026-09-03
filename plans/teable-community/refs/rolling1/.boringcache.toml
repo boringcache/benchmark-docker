@@ -1,0 +1,25 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-teable-community"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=teable-community", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/teable-community/source/dockers/teable/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "ENABLE_CSP=false",
+  "--build-arg",
+  "BUILD_VERSION=52c387e49ae88218cadc81cd0209653742b8add8",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/teable-community-proof:rolling1",
+  "../../../../.work/teable-community/source/.",
+]

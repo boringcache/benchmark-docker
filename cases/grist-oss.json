@@ -1,0 +1,33 @@
+{
+  "id": "grist-oss",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "gristlabs/grist-core",
+    "workflow": ".github/workflows/docker_latest.yml",
+    "pain_url": "https://github.com/gristlabs/grist-core/actions/runs/29722168278",
+    "evidence_run": "https://github.com/gristlabs/grist-core/actions/runs/29722168278/job/88287251647",
+    "runner": "GitHub-hosted ubuntu-22.04"
+  },
+  "refs": {
+    "main": "25b1637da86cce457051f4e46c9cab5ba55e85fb",
+    "seed": "bdce87bb572b690f15d226342f6c0d1677f76711",
+    "rolling1": "523dec2d467203cec79416964a1bbc691e863919",
+    "rolling2": "25b1637da86cce457051f4e46c9cab5ba55e85fb"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "grist-oss",
+    "platform": "linux/amd64",
+    "build_args": [
+      "GRIST_ALLOW_AUTOMATIC_VERSION_CHECKING=false"
+    ],
+    "original_cache": "type=gha,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

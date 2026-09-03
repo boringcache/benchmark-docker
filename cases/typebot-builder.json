@@ -1,0 +1,33 @@
+{
+  "id": "typebot-builder",
+  "fidelity": {
+    "level": "matrix-member"
+  },
+  "source": {
+    "repo": "baptisteArno/typebot.io",
+    "workflow": ".github/workflows/release.yml",
+    "pain_url": "https://github.com/baptisteArno/typebot.io/actions/runs/27695467686",
+    "evidence_run": "https://github.com/baptisteArno/typebot.io/actions/runs/27695467686/job/81917369215",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "512c9889515c19eb0e2c8bf9d68f877fc78786c4",
+    "seed": "9900fc7149da89bdb3624d28ad0b9757140dd141",
+    "rolling1": "e7be877bc101929c8d4574104b4d5ec5d61cc6f5",
+    "rolling2": "512c9889515c19eb0e2c8bf9d68f877fc78786c4"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "typebot-builder",
+    "platform": "linux/amd64",
+    "build_args": [
+      "SCOPE=builder"
+    ],
+    "original_cache": "type=gha,scope=builder-amd,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

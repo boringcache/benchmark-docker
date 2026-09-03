@@ -1,0 +1,51 @@
+{
+  "id": "mozilla-fxa-mono",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "mozilla/fxa",
+    "workflow": ".github/workflows/docker.yml",
+    "pain_url": "https://github.com/mozilla/fxa/pull/19848",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "ecf4e98c38616c07aa0b22d41d6fed26e1319eac",
+    "seed": "adb62a1fa56cd7b91bb6644364e76b725618f8e8",
+    "rolling1": "93960f1977f2f2a2d59fc8a210c469db248b1b33",
+    "rolling2": "ecf4e98c38616c07aa0b22d41d6fed26e1319eac"
+  },
+  "ref_metadata": {
+    "main": {
+      "tag": "v1.341.1",
+      "l10n_sha": "eaccc2c35f16f21f2ccc33332820970675f30a2e"
+    },
+    "seed": {
+      "tag": "v1.340.2",
+      "l10n_sha": "b8c56e5df021d1577e282319127c0ec5a285027e"
+    },
+    "rolling1": {
+      "tag": "v1.341.0",
+      "l10n_sha": "07824c8a178819d9390650647c59351f06ca9132"
+    },
+    "rolling2": {
+      "tag": "v1.341.1",
+      "l10n_sha": "eaccc2c35f16f21f2ccc33332820970675f30a2e"
+    }
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "_dev/docker/mono/Dockerfile",
+    "image": "mozilla-fxa-mono",
+    "platform": "linux/amd64",
+    "prepare_commands": [
+      "../../../scripts/prepare-fxa-localization.sh \"$PROJECT_L10N_SHA\"",
+      "GIT_TAG=\"$PROJECT_TAG\" ./_scripts/create-version-json.sh"
+    ],
+    "original_cache": "type=gha,mode=max removed after repeated runner disk exhaustion"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

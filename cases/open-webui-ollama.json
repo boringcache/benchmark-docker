@@ -1,0 +1,34 @@
+{
+  "id": "open-webui-ollama",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "open-webui/open-webui",
+    "workflow": ".github/workflows/docker.yaml",
+    "pain_url": "https://github.com/open-webui/open-webui/actions/runs/29719425583",
+    "evidence_run": "https://github.com/open-webui/open-webui/actions/runs/29719425583/job/88279690630",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "2fcb36267f034f2b83f936bfacedc20b680a2710",
+    "seed": "6e5efc1f757c614814ba88bbae6caa3aaddda528",
+    "rolling1": "af9a315ac30b83241f3df5556d7a2abfcd5d25b0",
+    "rolling2": "2fcb36267f034f2b83f936bfacedc20b680a2710"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "image": "open-webui-ollama",
+    "platform": "linux/amd64",
+    "build_args": [
+      "BUILD_HASH={PROJECT_REF}",
+      "USE_OLLAMA=true"
+    ],
+    "original_cache": "type=registry,mode=max"
+  },
+  "workflow": {
+    "free_disk_space": true
+  }
+}

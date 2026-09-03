@@ -1,0 +1,44 @@
+{
+  "id": "iggy-rust-server-sccache",
+  "fidelity": {
+    "level": "diagnostic-overlay"
+  },
+  "name": "Apache Iggy server image with container-side sccache",
+  "source": {
+    "repo": "apache/iggy",
+    "workflow": ".github/workflows/publish.yml",
+    "pain_url": "https://github.com/apache/iggy/commit/57fbe04a3191d0295a2ff492b447c0b86ced862b",
+    "evidence_run": "https://github.com/apache/iggy/actions/runs/24415263274",
+    "runner": "GitHub-hosted ubuntu-latest"
+  },
+  "refs": {
+    "main": "9f78eea345b37ee974075568c88797a514a73c04",
+    "rolling1": "9f698a596fdbfeff7daddfcfb2b7b1de1946a380",
+    "rolling2": "5cc47fae4d5c05343ffd84fb0d52d8909aadebdb",
+    "rolling3": "d473108986ccd6563896f8bd940b649a5c5e0359",
+    "rolling4": "c9def83a03c48fdbae7c56cc061de5779243c1ec",
+    "graduation-base": "6ca219f6795769780a671e833939e54fb09ae15a",
+    "graduation-head": "6f1d5485d06c3c43afd2510e432b2f7c1a3ac41a"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": ".",
+    "dockerfile": "core/server/Dockerfile.boringcache-sccache",
+    "overlay_dockerfile": "overlays/iggy-rust-server-sccache/Dockerfile",
+    "image": "iggy-rust-server-sccache",
+    "platform": "linux/amd64",
+    "build_args": [
+      "IGGY_CI_BUILD=true"
+    ],
+    "rust_target_cache": {
+      "kind": "buildkit-cache-mount",
+      "id_pattern": "^/?cargo-target-"
+    },
+    "original_cache": "type=registry,ref=apache/iggy:buildcache-amd64 plus scoped type=gha BuildKit caches",
+    "tool_cache": "sccache:{CACHE_SCOPE}-sccache"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-latest",
+    "free_disk_space": true
+  }
+}

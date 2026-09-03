@@ -1,0 +1,27 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-prefect-conda"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=prefect-conda", "source-ref=main"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/prefect-conda/source/Dockerfile",
+  "--platform",
+  "linux/amd64,linux/arm64",
+  "--build-arg",
+  "PYTHON_VERSION=3.12",
+  "--build-arg",
+  "NODE_VERSION=22.13.0",
+  "--build-arg",
+  "BASE_IMAGE=prefect-conda",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/prefect-conda-proof:main",
+  "../../../../.work/prefect-conda/source/.",
+]

@@ -1,0 +1,10 @@
+.DS_Store
+.tmp/
+.work/
+benchmark-diagnostics/
+benchmark-native-tool/
+benchmark-phase/
+benchmark-results/
+benchmark-session-summary/
+benchmark-storage/
+*.log

@@ -1,0 +1,30 @@
+{
+  "id": "pythonitalia-pycon-pretix",
+  "fidelity": {
+    "level": "direct-step"
+  },
+  "source": {
+    "repo": "pythonitalia/pycon",
+    "workflow": ".github/workflows/build-pretix.yml",
+    "pain_url": "https://github.com/pythonitalia/pycon/issues/4536",
+    "runner": "GitHub-hosted ubuntu-24.04-arm"
+  },
+  "refs": {
+    "main": "d2499973b760c9c80c7d633224c90b521a4cdaf5",
+    "seed": "590a0fb3ba79f4323f5bcd10808189fb1f9ed9cf",
+    "rolling1": "e94f96504adf8ae3bc0e8672eb7b13d79389aac7",
+    "rolling2": "4945e5879a0880e89343591a198e992e4adf1e03"
+  },
+  "docker": {
+    "output": "ghcr",
+    "context": "pretix",
+    "dockerfile": "pretix/Dockerfile",
+    "image": "pythonitalia-pycon-pretix",
+    "platform": "linux/arm64",
+    "original_cache": "type=gha,mode=max"
+  },
+  "workflow": {
+    "runner_label": "ubuntu-24.04-arm",
+    "cli_platform": "linux-arm64"
+  }
+}

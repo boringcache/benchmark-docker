@@ -1,0 +1,25 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-karakeep-aio"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=karakeep-aio", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/karakeep-aio/source/docker/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--target",
+  "aio",
+  "--build-arg",
+  "SERVER_VERSION=benchmark-e8a138f103d49e1c3dc9fd3b700b5ba9efedddc7",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/karakeep-aio-proof:rolling1",
+  "../../../../.work/karakeep-aio/source/.",
+]

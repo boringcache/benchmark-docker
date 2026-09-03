@@ -1,0 +1,23 @@
+workspace = "boringcache/docker-cache-proof"
+
+[adapters.docker]
+tag = "docker-cache-proof-grist-oss"
+no-platform = true
+no-git = true
+fail-on-cache-error = true
+metadata-hints = ["benchmark=docker-cache-proof", "case=grist-oss", "source-ref=rolling1"]
+command = [
+  "docker",
+  "buildx",
+  "build",
+  "--file",
+  "../../../../.work/grist-oss/source/Dockerfile",
+  "--platform",
+  "linux/amd64",
+  "--build-arg",
+  "GRIST_ALLOW_AUTOMATIC_VERSION_CHECKING=false",
+  "--push",
+  "--tag",
+  "ghcr.io/boringcache/grist-oss-proof:rolling1",
+  "../../../../.work/grist-oss/source/.",
+]

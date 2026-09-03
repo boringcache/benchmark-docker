@@ -19,6 +19,15 @@ FIDELITY_LEVELS = {
     "diagnostic-tool-cache",
     "diagnostic-overlay",
 }
+ONE_ACTION_INPUTS = {
+    "cli-version",
+    "cli-platform",
+    "mode",
+    "trust-policy",
+    "fail-on-cache-miss",
+    "fail-on-cache-error",
+    "working-directory",
+}
 
 
 class RecipeMismatch(RuntimeError):
@@ -68,6 +77,25 @@ def load_command(path: Path) -> tuple[dict, list[str]]:
     return adapter, adapter["command"]
 
 
+def one_action_input_keys(action: str) -> list[set[str]]:
+    blocks = re.findall(
+        r"(?ms)^      uses: boringcache/one@[^\n]+\n(?P<body>.*?)(?=^    - name:|\Z)",
+        action,
+    )
+    result = []
+    for block in blocks:
+        with_block = re.search(
+            r"(?ms)^      with:\n(?P<body>(?:^        .*\n?)*)", block
+        )
+        require(
+            with_block is not None, "BoringCache One invocation has no with block"
+        )
+        result.append(
+            set(re.findall(r"(?m)^        ([a-z][a-z-]*):", with_block.group("body")))
+        )
+    return result
+
+
 def verify_catalog() -> int:
     cases = [json.loads(path.read_text()) for path in sorted((ROOT / "cases").glob("*.json"))]
     require(len(cases) == 47, f"expected 47 Docker cases, found {len(cases)}")
@@ -112,8 +140,41 @@ def verify_catalog() -> int:
 
     action = (ROOT / ".github/actions/docker-product-proof/action.yml").read_text()
     require("uses: actions/setup-python@v6" in action, "case runners do not provide Python 3.11+")
+    action_inputs = one_action_input_keys(action)
+    require(len(action_inputs) == 2, "both Docker trust paths must invoke BoringCache One")
+    require(
+        all(inputs <= ONE_ACTION_INPUTS for inputs in action_inputs),
+        "BoringCache One invocations must contain only thin Action inputs",
+    )
+    required_inputs = {
+        "cli-version",
+        "cli-platform",
+        "mode",
+        "trust-policy",
+        "working-directory",
+    }
+    require(
+        all(required_inputs <= inputs for inputs in action_inputs),
+        "BoringCache One invocations are missing required thin Action inputs",
+    )
     require(action.count("working-directory: ${{ inputs.plan_directory }}") == 2, "both trust paths must consume the selected plan")
     require('scope-boringcache-run.sh "$cache_scope" "$PLAN_DIRECTORY"' in action, "cache cohort does not target the selected plan")
+    require(
+        "configure-boringcache-plan.py" in action,
+        "run-specific Docker values do not reach the CLI plan",
+    )
+    require(
+        '--tool-cache "$docker_tool_cache"' in action,
+        "Docker tool cache does not reach the CLI plan",
+    )
+    require(
+        '--platform "$PLATFORMS"' in action,
+        "native platform selection does not reach the CLI plan",
+    )
+    require(
+        "--mount-cache --no-cache" in action,
+        "target mount-cache proof does not reach the CLI plan",
+    )
     emit = (ROOT / "scripts/emit-case-outputs.sh").read_text()
     require("emit-case-outputs.py" in emit and "jq" not in emit, "Action inputs must project from TOML")
     return len(cases)

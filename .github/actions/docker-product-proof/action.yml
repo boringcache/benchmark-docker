@@ -56,6 +56,14 @@ runs:
         REQUESTED_TOOL_CACHE: ${{ inputs.docker_tool_cache }}
         SCOPE_SUFFIX: ${{ inputs.cache_scope_suffix }}
         PLAN_DIRECTORY: ${{ inputs.plan_directory }}
+        IMAGE_REPOSITORY: ${{ inputs.image_repository }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
+        BENCHMARK_ID: ${{ inputs.benchmark_id }}
+        CASE_ID: ${{ inputs.case_id }}
+        FIDELITY_LEVEL: ${{ inputs.fidelity_level }}
+        PHASE: ${{ inputs.phase }}
+        RUST_TARGET_CACHE: ${{ inputs.rust_target_cache }}
+        PLATFORMS: ${{ inputs.platforms }}
       run: |
         set -euo pipefail
         ref_slug="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
@@ -65,12 +73,30 @@ runs:
         if [[ "$CACHE_LANE" == "rolling" ]]; then cache_scope="${CACHE_ID}-rolling-${ref_slug}${SCOPE_SUFFIX}"; else cache_scope="${CACHE_ID}-run-r${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}${SCOPE_SUFFIX}"; fi
         ./scripts/scope-boringcache-run.sh "$cache_scope" "$PLAN_DIRECTORY"
         docker_tool_cache="${REQUESTED_TOOL_CACHE//\{CACHE_SCOPE\}/$cache_scope}"
+        if [[ "$CACHE_LANE" == "rolling" ]]; then metadata_phase="rolling"; elif [[ "$PHASE" == "publish" ]]; then metadata_phase="fresh-cold"; else metadata_phase="fresh-warm"; fi
+        configure_args=(
+          --plan-directory "$PLAN_DIRECTORY"
+          --cache-scope "$cache_scope"
+          --image-repository "$IMAGE_REPOSITORY"
+          --image-tag "$IMAGE_TAG"
+          --metadata-hint "benchmark=$BENCHMARK_ID"
+          --metadata-hint "case=$CASE_ID"
+          --metadata-hint "fidelity=$FIDELITY_LEVEL"
+          --metadata-hint "phase=$metadata_phase"
+        )
+        [[ -z "$docker_tool_cache" ]] || configure_args+=(--tool-cache "$docker_tool_cache")
+        [[ -z "$PLATFORMS" ]] || configure_args+=(--platform "$PLATFORMS")
+        [[ "$RUST_TARGET_CACHE" != "true" ]] || configure_args+=(--mount-cache --no-cache)
+        python3 ./scripts/configure-boringcache-plan.py "${configure_args[@]}"
         {
           echo "cache_scope=${cache_scope}"
           echo "docker_tool_cache<<EOF"
           echo "$docker_tool_cache"
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
+    - name: Set up QEMU
+      if: inputs.setup_qemu == 'true'
+      uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
     - name: Log in for an image push
       if: inputs.build_output == 'ghcr'
       uses: docker/login-action@v4.2.0
@@ -82,60 +108,26 @@ runs:
       if: inputs.phase == 'publish'
       uses: boringcache/one@20202f4c4b789cdee581ae3f117dfafb8293b19c # v1 / 1.20.0
       env:
-        BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache == 'true' && '1' || '' }}
+        BORINGCACHE_MANAGED_BUILDKIT_IMAGE: ${{ inputs.buildkit_image }}
       with:
         cli-version: ${{ inputs.cli_version }}
         cli-platform: ${{ inputs.cli_platform }}
-        setup: none
         mode: docker
         trust-policy: publish
-        context: ${{ inputs.docker_context }}
-        dockerfile: ${{ inputs.dockerfile_path }}
-        image: ${{ inputs.image_repository }}
-        tags: ${{ inputs.image_tag }}
-        target: ${{ inputs.target }}
-        platforms: ${{ inputs.platforms }}
-        build-args: ${{ inputs.build_args }}
-        qemu: ${{ inputs.setup_qemu == 'true' }}
-        load: ${{ inputs.build_output == 'load' }}
-        push: ${{ inputs.build_output == 'ghcr' }}
-        no-cache: ${{ inputs.rust_target_cache == 'true' }}
-        sbom: ${{ inputs.sbom == 'true' }}
-        provenance: ${{ inputs.provenance == 'true' }}
-        docker-tool-cache: ${{ steps.scope.outputs.docker_tool_cache }}
         fail-on-cache-error: true
-        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},fidelity=${{ inputs.fidelity_level }},phase=${{ inputs.cache_lane == 'rolling' && 'rolling' || 'fresh-cold' }}
-        managed-buildkit-image: ${{ inputs.buildkit_image }}
         working-directory: ${{ inputs.plan_directory }}
     - name: Restore BoringCache on a fresh runner
       if: inputs.phase == 'warm'
       uses: boringcache/one@20202f4c4b789cdee581ae3f117dfafb8293b19c # v1 / 1.20.0
       env:
-        BORINGCACHE_BUILDKIT_MOUNTCACHE_OFFLOADER: ${{ inputs.rust_target_cache == 'true' && '1' || '' }}
+        BORINGCACHE_MANAGED_BUILDKIT_IMAGE: ${{ inputs.buildkit_image }}
       with:
         cli-version: ${{ inputs.cli_version }}
         cli-platform: ${{ inputs.cli_platform }}
-        setup: none
         mode: docker
         trust-policy: restore
-        context: ${{ inputs.docker_context }}
-        dockerfile: ${{ inputs.dockerfile_path }}
-        image: ${{ inputs.image_repository }}
-        tags: ${{ inputs.image_tag }}
-        target: ${{ inputs.target }}
-        platforms: ${{ inputs.platforms }}
-        build-args: ${{ inputs.build_args }}
-        qemu: ${{ inputs.setup_qemu == 'true' }}
-        load: ${{ inputs.build_output == 'load' }}
-        push: ${{ inputs.build_output == 'ghcr' }}
-        no-cache: ${{ inputs.rust_target_cache == 'true' }}
-        sbom: ${{ inputs.sbom == 'true' }}
-        provenance: ${{ inputs.provenance == 'true' }}
-        docker-tool-cache: ${{ steps.scope.outputs.docker_tool_cache }}
         fail-on-cache-miss: true
         fail-on-cache-error: true
-        metadata-hints: benchmark=${{ inputs.benchmark_id }},case=${{ inputs.case_id }},fidelity=${{ inputs.fidelity_level }},phase=fresh-warm
-        managed-buildkit-image: ${{ inputs.buildkit_image }}
         working-directory: ${{ inputs.plan_directory }}
     - name: Verify the loaded image
       if: inputs.build_output == 'load'

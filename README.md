@@ -3,10 +3,13 @@
 This repository contains 47 pinned real-world Docker workloads.
 
 Each case and every allowed source ref has an executable `.boringcache.toml`
-under [`plans/`](plans/). The workflow selects one committed plan; Action inputs
-are projected from that plan rather than reconstructing the Docker command.
-Case JSON now owns only source checkout, upstream workflow/evidence anchors,
-prerequisites, runner selection, and explicit product experiments.
+under [`plans/`](plans/). The workflow selects one committed plan and applies
+only run-specific cache scope, image, platform, and experiment values to it.
+BoringCache One receives the thin GitHub lifecycle inputs; the CLI consumes the
+final plan and owns the Docker build. Workflow prerequisites such as QEMU stay
+in their dedicated setup actions. Case JSON owns source checkout, upstream
+workflow/evidence anchors, prerequisites, runner selection, and explicit
+product experiments.
 [`FIDELITY.md`](FIDELITY.md) distinguishes direct upstream steps, individual
 matrix members, wrapper projections, and deliberate diagnostic variants.
 

@@ -171,6 +171,8 @@ jobs:
           phase: publish
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
           fidelity_level: ${{ needs.case.outputs.fidelity_level }}
@@ -209,6 +211,8 @@ jobs:
           phase: warm
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
           fidelity_level: ${{ needs.case.outputs.fidelity_level }}
@@ -250,6 +254,8 @@ jobs:
           phase: publish
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
           fidelity_level: ${{ needs.case.outputs.fidelity_level }}
@@ -291,6 +297,8 @@ jobs:
           phase: warm
           case_id: ${{ needs.case.outputs.case_id }}
           case_ref_key: ${{ needs.case.outputs.case_ref_key }}
+          project_repo: ${{ needs.case.outputs.project_repo }}
+          project_ref: ${{ needs.case.outputs.project_ref }}
           benchmark_id: ${{ needs.case.outputs.benchmark_id }}
           cache_id: ${{ needs.case.outputs.cache_id }}
           fidelity_level: ${{ needs.case.outputs.fidelity_level }}

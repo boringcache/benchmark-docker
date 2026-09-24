@@ -5,6 +5,8 @@ inputs:
   phase: {required: true}
   case_id: {required: true}
   case_ref_key: {required: true}
+  project_repo: {required: true}
+  project_ref: {required: true}
   benchmark_id: {required: true}
   cache_id: {required: true}
   fidelity_level: {required: true}
@@ -104,7 +106,12 @@ runs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ github.token }}
+    - name: Start build timing
+      id: timer
+      shell: bash
+      run: echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
     - name: Publish BoringCache on the real Docker workload
+      id: publish
       if: inputs.phase == 'publish'
       uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1 / 1.32.0
       env:
@@ -117,6 +124,7 @@ runs:
         fail-on-cache-error: true
         working-directory: ${{ inputs.plan_directory }}
     - name: Restore BoringCache on a fresh runner
+      id: restore
       if: inputs.phase == 'warm'
       uses: boringcache/one@476c7df90bc1e7c2c4066aa7eb31cc057ef7f8d1 # v1 / 1.32.0
       env:
@@ -133,3 +141,21 @@ runs:
       if: inputs.build_output == 'load'
       shell: bash
       run: docker image inspect "${{ inputs.image_repository }}:${{ inputs.image_tag }}" >/dev/null
+    - name: Write proof result
+      shell: bash
+      env:
+        CASE_ID: ${{ inputs.case_id }}
+        CACHE_LANE: ${{ inputs.cache_lane }}
+        PHASE: ${{ inputs.phase }}
+        SOURCE_REPOSITORY: ${{ inputs.project_repo }}
+        SOURCE_SHA: ${{ inputs.project_ref }}
+        CACHE_SCOPE: ${{ steps.scope.outputs.cache_scope }}
+        BUILD_STARTED_AT: ${{ steps.timer.outputs.started_at }}
+        EVIDENCE_PATH: ${{ steps.publish.outputs.evidence-path || steps.restore.outputs.evidence-path }}
+      run: python3 ./scripts/write-proof-result.py
+    - name: Retain proof result
+      uses: actions/upload-artifact@v6
+      with:
+        name: proof-${{ inputs.case_id }}-${{ inputs.phase }}-${{ inputs.cli_platform }}
+        path: benchmark-results/*.json
+        if-no-files-found: error
